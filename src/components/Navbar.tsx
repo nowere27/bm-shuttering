@@ -108,7 +108,8 @@ const Navbar: React.FC = () => {
       green: '#16a34a',
       orange: '#f59e0b',
       cyan: '#0891b2',
-      slate: '#475569'
+      slate: '#475569',
+      purple: '#8b5cf6'
     };
     return colors[colorClass] || colors.blue;
   };

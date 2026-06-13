@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, MapPin, Phone, Download, Plus, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ClientLedgerData } from '../pages/ClientLedger';
@@ -20,14 +20,38 @@ export default function ClientLedgerCard({ ledger }: ClientLedgerCardProps) {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  // Only render the off-screen download containers after the first download request
+  const [downloadMounted, setDownloadMounted] = useState(false);
 
   const getInitial = (name: string) => {
     return name.charAt(0).toUpperCase();
   };
 
+  const pendingDownloadType = useRef<'simple' | 'detailed' | null>(null);
+
   const handleDownloadLedger = async (type: 'simple' | 'detailed') => {
     if (isDownloading) return;
     setIsDownloading(true);
+    if (!downloadMounted) {
+      // Mount containers first, then wait one frame for React to render them
+      pendingDownloadType.current = type;
+      setDownloadMounted(true);
+      return;
+    }
+    await runDownload(type);
+  };
+
+  // When containers are first mounted, complete the pending download
+  useEffect(() => {
+    if (!downloadMounted || !pendingDownloadType.current) return;
+    const type = pendingDownloadType.current;
+    pendingDownloadType.current = null;
+    // rAF ensures DOM is painted before html2canvas captures it
+    requestAnimationFrame(() => { runDownload(type); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [downloadMounted]);
+
+  const runDownload = async (type: 'simple' | 'detailed') => {
     const loadingToast = toast.loading('Generating ledger image...');
     try {
       const elementId = `client-ledger-download-${ledger.clientId}-${type}`;
@@ -326,8 +350,8 @@ export default function ClientLedgerCard({ ledger }: ClientLedgerCardProps) {
         )
       }
 
-      {/* Hidden Download Containers */}
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+      {/* Hidden Download Containers — only mounted on first download request */}
+      {downloadMounted && <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         {/* Detailed Version */}
         <ClientLedgerDownload
           elementId={`client-ledger-download-${ledger.clientId}-detailed`}
@@ -351,7 +375,8 @@ export default function ClientLedgerCard({ ledger }: ClientLedgerCardProps) {
           currentBalance={ledger.currentBalance}
           simpleMode={true}
         />
-      </div>
-    </div >
+      </div>}
+    </div>
+
   );
 }

@@ -2,7 +2,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
@@ -34,12 +33,23 @@ export default defineConfig({
           }
         ]
       },
-      devOptions: {
-        enabled: true
-      }
+      devOptions: { enabled: true }
     })
   ],
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
+  build: {
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        // Split heavy vendor libs into separate cached chunks
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-charts': ['recharts'],
+          'vendor-images': ['html-to-image', 'html2canvas'],
+          'vendor-utils': ['date-fns', 'lodash'],
+          'vendor-motion': ['motion'],
+        }
+      }
+    }
+  }
 });
