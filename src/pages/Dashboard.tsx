@@ -359,14 +359,14 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <p className="text-xs font-medium">{format(new Date(), 'dd MMM yyyy')}</p>
+                <p className="text-xs font-medium">{format(new Date(), 'yyyy')}</p>
               </div>
 
               {/* Desktop Date Display */}
               <div className="absolute items-center hidden gap-3 overflow-visible top-3 right-3 sm:flex sm:top-4 sm:right-4 lg:top-6 lg:right-6">
                 <div className="text-right">
                   <p className="mb-0.5 text-[10px] sm:text-xs text-blue-100">{t('Todays_Date')}</p>
-                  <p className="text-sm font-semibold sm:text-base lg:text-xl">{format(new Date(), 'dd MMM yyyy')}</p>
+                  <p className="text-sm font-semibold sm:text-base lg:text-xl">{format(new Date(), 'yyyy')}</p>
                 </div>
                 <div className="calendar-flip-container">
                   <div className="calendar-page-stack">

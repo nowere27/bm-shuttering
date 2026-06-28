@@ -1,45 +1,46 @@
 import html2canvas from 'html2canvas';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
+import BillInvoiceTemplate from '../components/BillInvoiceTemplate';
+
+type BillInvoiceProps = React.ComponentProps<typeof BillInvoiceTemplate>;
 
 export const generateBillJPEG = async (
-  billNumber: string
+  billNumber: string,
+  billData: BillInvoiceProps
 ): Promise<void> => {
-  // Add delay to ensure template is fully loaded
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const container = document.createElement('div');
+  Object.assign(container.style, {
+    position: 'fixed',
+    top: '0',
+    left: '0',
+    zIndex: '-9999',
+    width: '794px',
+    backgroundColor: '#ffffff',
+    pointerEvents: 'none',
+  });
+  document.body.appendChild(container);
 
-  const sourceNode = document.getElementById('invoice-template');
-  if (!sourceNode) {
-    throw new Error('Invoice template not found');
-  }
+  const root = createRoot(container);
 
-  // Clone the node to render it in viewport (but hidden via z-index/opacity)
-  // This ensures browsers render it fully/correctly compared to off-screen
-  const clone = sourceNode.cloneNode(true) as HTMLElement;
-
-  // Style the clone to be visible to html2canvas but not interactable/visible to user
-  clone.style.display = 'block';
-  clone.style.position = 'fixed';
-  clone.style.top = '0';
-  clone.style.left = '0';
-  clone.style.zIndex = '-9999';
-  clone.style.width = '794px'; // Enforce A4 width
-  clone.style.backgroundColor = '#ffffff';
-
-  document.body.appendChild(clone);
+  // flushSync forces React to render synchronously — no setTimeout needed
+  flushSync(() => {
+    root.render(React.createElement(BillInvoiceTemplate, billData));
+  });
 
   try {
-    const canvas = await html2canvas(clone, {
-      scale: 2, // Higher resolution
+    const canvas = await html2canvas(container, {
+      scale: 2,
       useCORS: true,
       allowTaint: false,
       backgroundColor: '#ffffff',
       width: 794,
-      height: clone.scrollHeight,
+      height: container.scrollHeight,
       logging: false,
-      removeContainer: true,
-      windowWidth: 794 // Simulate window width
+      windowWidth: 794,
     });
 
-    // Convert to JPEG and download
     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
     const link = document.createElement('a');
     link.download = `Bill_${billNumber}.jpg`;
@@ -47,15 +48,10 @@ export const generateBillJPEG = async (
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(dataUrl);
-
-  } catch (error) {
-    console.error('Error generating bill JPEG:', error);
-    throw error;
   } finally {
-    // Always remove the clone
-    if (document.body.contains(clone)) {
-      document.body.removeChild(clone);
+    root.unmount();
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
     }
   }
 };

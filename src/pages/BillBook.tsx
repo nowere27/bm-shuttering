@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Search, RefreshCw, Filter, Download, X, Wallet, FileText } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../utils/supabase";
@@ -31,9 +31,6 @@ export default function BillBook() {
   const [selectedBill, setSelectedBill] = useState<any | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
-
-  // Hidden template ref for download
-  const downloadTemplateRef = useRef<HTMLDivElement>(null);
 
   // Load Bills
   const loadBills = async (showRefreshToast = false) => {
@@ -307,13 +304,17 @@ export default function BillBook() {
   };
 
   const handleDownloadBill = async (bill: BillRecord) => {
-    const details = await fetchBillDetails(bill);
-    if (details) {
-      setSelectedBill(details);
-      // Wait for render then download via the hidden template
-      setTimeout(() => {
-        generateBillJPEG(bill.bill_number);
-      }, 1000); // give time for state update and render
+    const toastId = toast.loading(t("loadingDetails"));
+    try {
+      const details = await fetchBillDetails(bill);
+      if (details) {
+        await generateBillJPEG(bill.bill_number, details);
+        toast.success(t("challanDownloadSuccess"), { id: toastId });
+      } else {
+        toast.dismiss(toastId);
+      }
+    } catch {
+      toast.error(t("challanDownloadError"), { id: toastId });
     }
   };
 
@@ -492,11 +493,14 @@ export default function BillBook() {
               </h3>
               <div className="flex gap-2 shrink-0">
                 <button
-                  onClick={() => {
-                    // Trigger download for the currently viewed bill
-                    setTimeout(() => {
-                      generateBillJPEG(selectedBill.billDetails.billNumber);
-                    }, 500);
+                  onClick={async () => {
+                    const toastId = toast.loading(t("loadingDetails"));
+                    try {
+                      await generateBillJPEG(selectedBill.billDetails.billNumber, selectedBill);
+                      toast.success(t("challanDownloadSuccess"), { id: toastId });
+                    } catch {
+                      toast.error(t("challanDownloadError"), { id: toastId });
+                    }
                   }}
                   className="p-2 text-green-600 hover:bg-green-50 rounded-lg flex items-center gap-1"
                 >
