@@ -130,8 +130,8 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
             </div>
 
             <div style={{ textAlign: 'right', fontSize: '12.5px', lineHeight: 1.8 }}>
-              <div><b>માર્ગેશ પોલારા</b> 88664 71567</div>
-              <div><b>માર્ગેશ પોલારા</b> 88664 71567</div>
+              <div><b>માર્ગેશ પોલારા</b> - 88664 71567</div>
+              <div><b>માર્ગેશ પોલારા</b> - 88664 71567</div>
             </div>
           </div>
 
