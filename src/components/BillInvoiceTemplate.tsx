@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { format } from 'date-fns';
 import './BillInvoice.css';
 import { formatIndianCurrency } from '../utils/currencyFormat';
@@ -79,13 +79,78 @@ interface BillInvoiceProps {
   };
 }
 
-const cell = (extra: React.CSSProperties = {}): React.CSSProperties => ({
+type RentalCharge = BillInvoiceProps['rentalCharges'][number];
+
+// ── Static style objects (created once, never on every render) ─────────────
+const BASE_CELL: React.CSSProperties = {
   border: '1px solid #d1d5db',
   padding: '7px 10px',
   fontSize: '13px',
-  ...extra,
-});
+};
 
+const C = {
+  base: BASE_CELL,
+  prevBillLabel: { ...BASE_CELL, fontWeight: 'bold', color: '#b91c1c', fontSize: '13px' } as React.CSSProperties,
+  prevBillAmt: { ...BASE_CELL, textAlign: 'center', fontWeight: 'bold', color: '#b91c1c', fontSize: '14px' } as React.CSSProperties,
+  dateRange: { ...BASE_CELL, textAlign: 'center', fontWeight: '600' } as React.CSSProperties,
+  udharJama: { ...BASE_CELL, textAlign: 'center', lineHeight: 1.5 } as React.CSSProperties,
+  rateDays: { ...BASE_CELL, textAlign: 'center', fontWeight: '600', color: '#4b5563' } as React.CSSProperties,
+  amount: { ...BASE_CELL, textAlign: 'center', fontWeight: '700', fontSize: '14px' } as React.CSSProperties,
+  extraDesc: { ...BASE_CELL, fontWeight: '600' } as React.CSSProperties,
+} as const;
+
+// Pieces cell varies based on isZero — build on each row but reuse base
+function piecesCell(isZero: boolean): React.CSSProperties {
+  return {
+    ...BASE_CELL,
+    textAlign: 'center',
+    fontWeight: isZero ? '900' : '700',
+    fontSize: '14px',
+    color: isZero ? '#dc2626' : '#111',
+  };
+}
+
+// ── Pure function: computes udharQty / jamaQty for a rental row ────────────
+function computeRentalRow(
+  charge: RentalCharge,
+  index: number,
+  allCharges: RentalCharge[],
+  fromDate: string,
+  toDate: string,
+): { udharQty: number; jamaQty: number; skip: boolean } {
+  if (charge.udharQty !== undefined || charge.jamaQty !== undefined) {
+    return { udharQty: charge.udharQty ?? 0, jamaQty: charge.jamaQty ?? 0, skip: false };
+  }
+
+  const isJama = charge.causeType === 'jama';
+  const prevPieces = index > 0 ? allCharges[index - 1].pieces : 0;
+  const currentQty = charge.txnQty || Math.abs(charge.pieces - prevPieces) || charge.pieces;
+  const chargeStart = charge.startDate ?? fromDate;
+  const chargeEnd = charge.endDate ?? toDate;
+
+  // Single findIndex replaces the previous find + findIndex pair
+  const matchingIdx = allCharges.findIndex((c, i) => {
+    if (i === index) return false;
+    return (c.startDate ?? fromDate) === chargeStart
+      && (c.endDate ?? toDate) === chargeEnd
+      && c.causeType !== charge.causeType;
+  });
+
+  if (isJama && matchingIdx !== -1) return { udharQty: 0, jamaQty: 0, skip: true };
+
+  const matchingCharge = matchingIdx !== -1 ? allCharges[matchingIdx] : null;
+  const matchingQty = matchingCharge
+    ? (matchingCharge.txnQty ?? Math.abs(matchingCharge.pieces - (matchingIdx > 0 ? allCharges[matchingIdx - 1].pieces : 0)))
+    : 0;
+
+  return {
+    udharQty: isJama ? matchingQty : currentQty,
+    jamaQty: isJama ? currentQty : matchingQty,
+    skip: false,
+  };
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
 const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
   billDetails,
   clientDetails,
@@ -100,7 +165,7 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
     <div style={{
       width: '794px',
       backgroundColor: '#fff',
-      fontFamily: '"Arya", "Noto Sans Gujarati", Arial, sans-serif',
+      fontFamily: '"Noto Sans Gujarati", Arial, sans-serif',
       color: '#111',
       padding: '18px',
       boxSizing: 'border-box',
@@ -115,40 +180,54 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            padding: '10px 16px 8px',
+            alignItems: 'center',
+            padding: '4px 16px 3px',
             borderBottom: '1px solid #d1d5db',
           }}>
-            <div style={{ fontWeight: 'bold', fontSize: '13px', lineHeight: 1.6 }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', lineHeight: 1.4 }}>
               પરષોત્તમભાઈ પોલરા<br />
-              <span style={{ fontWeight: '500', fontSize: '12px' }}>(રૂપાવટીવાળા)</span>
+              <span style={{ fontWeight: '500', fontSize: '9px' }}>(રૂપાવટીવાળા)</span>
             </div>
 
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '14px', lineHeight: 1.7 }}>
-              ॥ શ્રી ૧ ॥<br />
-              શ્રી ગણેશાય નમઃ
+            <div style={{ textAlign: 'center', lineHeight: 1.3 }}>
+              <div style={{ fontWeight: '900', fontSize: '11px', letterSpacing: '1px' }}>
+                ॥ શ્રી ૧ ॥
+              </div>
+              <div style={{ fontWeight: '700', fontSize: '10px', color: '#4b5563' }}>
+                શ્રી ગણેશાય નમઃ
+              </div>
             </div>
 
-            <div style={{ textAlign: 'right', fontSize: '12.5px', lineHeight: 1.8 }}>
+            <div style={{ textAlign: 'right', fontSize: '9.5px', lineHeight: 1.5 }}>
               <div><b>માર્ગેશ પોલારા</b> - 88664 71567</div>
               <div><b>માર્ગેશ પોલારા</b> - 88664 71567</div>
             </div>
           </div>
 
-          {/* Company name capsule */}
+          {/* Company name — full-width double-rule banner */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '10px 20px 8px',
+            padding: '24px 16px',
             borderBottom: '1px solid #d1d5db',
+            textAlign: 'center',
+            borderTop: '3px double #111',
           }}>
             <div style={{
-              border: '2.5px solid #111',
-              borderRadius: '50px',
-              padding: '5px 70px',
+              borderTop: '1px solid #111',
+              borderBottom: '1px solid #111',
+              padding: '32px 0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#fff',
             }}>
-              <span style={{ fontSize: '42px', fontWeight: '900', letterSpacing: '3px' }}>
-                ખાતા કેન્દ્ર
+              <span style={{
+                fontSize: '44px',
+                fontWeight: '500',
+                letterSpacing: '6px',
+                lineHeight: 1,
+                display: 'block',
+              }}>
+                 &nbsp;ખાતા કેન્દ્ર&nbsp; 
               </span>
             </div>
           </div>
@@ -246,10 +325,10 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
             {/* Previous bill row */}
             {previousBill && previousBill.amount > 0 && (
               <tr style={{ backgroundColor: '#fff5f5' }}>
-                <td colSpan={5} style={{ ...cell(), fontWeight: 'bold', color: '#b91c1c', fontSize: '13px' }}>
+                <td colSpan={5} style={C.prevBillLabel}>
                   ⚠ અગાઉનું બિલ #{previousBill.billNumber} બાકી
                 </td>
-                <td style={{ ...cell({ textAlign: 'center', fontWeight: 'bold', color: '#b91c1c', fontSize: '14px' }) }}>
+                <td style={C.prevBillAmt}>
                   {formatIndianCurrency(previousBill.amount)}
                 </td>
               </tr>
@@ -257,53 +336,25 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
 
             {/* Rental rows */}
             {rentalCharges.map((charge, index) => {
+              const { udharQty, jamaQty, skip } = computeRentalRow(
+                charge, index, rentalCharges, billDetails.fromDate, billDetails.toDate,
+              );
+              if (skip) return null;
+
               const rowStartDate = charge.startDate ? new Date(charge.startDate) : new Date(billDetails.fromDate);
               const rowEndDate = charge.endDate ? new Date(charge.endDate) : new Date(billDetails.toDate);
-
-              let udharQty = 0;
-              let jamaQty = 0;
-
-              if (charge.udharQty !== undefined || charge.jamaQty !== undefined) {
-                udharQty = charge.udharQty || 0;
-                jamaQty = charge.jamaQty || 0;
-              } else {
-                const isJama = charge.causeType === 'jama';
-                const prevPieces = index > 0 ? rentalCharges[index - 1].pieces : 0;
-                const stockChange = Math.abs(charge.pieces - prevPieces);
-                const currentQty = charge.txnQty || stockChange || charge.pieces;
-                const chargeStart = charge.startDate || billDetails.fromDate;
-                const chargeEnd = charge.endDate || billDetails.toDate;
-
-                const matchingCharge = rentalCharges.find((c, i) => {
-                  if (i === index) return false;
-                  const cStart = c.startDate || billDetails.fromDate;
-                  const cEnd = c.endDate || billDetails.toDate;
-                  return cStart === chargeStart && cEnd === chargeEnd && c.causeType !== charge.causeType;
-                });
-
-                if (isJama && matchingCharge) return null;
-
-                const matchingIdx = matchingCharge ? rentalCharges.findIndex(c => c === matchingCharge) : -1;
-                const matchingQty = matchingCharge
-                  ? (matchingCharge.txnQty || Math.abs(matchingCharge.pieces - (matchingIdx > 0 ? rentalCharges[matchingIdx - 1].pieces : 0)))
-                  : 0;
-
-                udharQty = isJama ? matchingQty : currentQty;
-                jamaQty = isJama ? currentQty : matchingQty;
-              }
-
               const isZero = charge.pieces === 0 && charge.days === 0;
               const bg = index % 2 === 0 ? '#fff' : '#f9fafb';
 
               return (
                 <tr key={`rent-${index}`} style={{ backgroundColor: bg }}>
-                  <td style={{ ...cell({ textAlign: 'center', fontWeight: '600' }) }}>
+                  <td style={C.dateRange}>
                     {charge.days === 0
                       ? format(rowEndDate, 'dd/MM/yyyy')
                       : <>{format(rowStartDate, 'dd/MM/yyyy')} થી {format(rowEndDate, 'dd/MM/yyyy')}</>
                     }
                   </td>
-                  <td style={{ ...cell({ textAlign: 'center', lineHeight: 1.5 }) }}>
+                  <td style={C.udharJama}>
                     {(charge.udharDetails && charge.udharDetails.length > 1)
                       ? charge.udharDetails.map((d, i) => <div key={i} style={{ color: '#dc2626', fontWeight: 'bold' }}>+{d.qty}</div>)
                       : udharQty > 0 && <div style={{ color: '#dc2626', fontWeight: 'bold' }}>+{udharQty}</div>
@@ -317,26 +368,26 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
                       && <span style={{ color: '#9ca3af' }}>—</span>
                     }
                   </td>
-                  <td style={{ ...cell({ textAlign: 'center', fontWeight: isZero ? '900' : '700', fontSize: '14px', color: isZero ? '#dc2626' : '#111' }) }}>
+                  <td style={piecesCell(isZero)}>
                     {charge.pieces}
                   </td>
-                  <td style={{ ...cell({ textAlign: 'center', fontWeight: '600', color: '#4b5563' }) }}>
+                  <td style={C.rateDays}>
                     {isZero ? '—' : (charge.rate || billDetails.dailyRent)}
                   </td>
-                  <td style={{ ...cell({ textAlign: 'center', fontWeight: '600', color: '#4b5563' }) }}>
+                  <td style={C.rateDays}>
                     {isZero ? '—' : charge.days}
                   </td>
-                  <td style={{ ...cell({ textAlign: 'center', fontWeight: '700', fontSize: '14px' }) }}>
+                  <td style={C.amount}>
                     {isZero ? '—' : formatIndianCurrency(Math.round(charge.amount))}
                   </td>
                 </tr>
               );
-            }).filter(Boolean)}
+            })}
 
             {/* Extra costs rows */}
             {extraCosts.map((cost, index) => (
               <tr key={`extra-${index}`} style={{ backgroundColor: '#fffbeb' }}>
-                <td colSpan={5} style={{ ...cell({ fontWeight: '600' }) }}>
+                <td colSpan={5} style={C.extraDesc}>
                   {cost.description}
                   {(cost.description === 'સર્વિસ ચાર્જ' || cost.description === 'Service Charge') && cost.pieces && cost.rate && (
                     <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>
@@ -344,7 +395,7 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
                     </span>
                   )}
                 </td>
-                <td style={{ ...cell({ textAlign: 'center', fontWeight: '700', fontSize: '14px' }) }}>
+                <td style={C.amount}>
                   {formatIndianCurrency(cost.amount)}
                 </td>
               </tr>
@@ -460,4 +511,4 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
   );
 };
 
-export default BillInvoiceTemplate;
+export default memo(BillInvoiceTemplate);

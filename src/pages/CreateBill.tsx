@@ -670,7 +670,7 @@ export default function CreateBill() {
 
       // Generate and download bill JPEG
       try {
-        await generateBillJPEG(billData.billNumber);
+        await generateBillJPEG(billData.billNumber, invoiceProps);
         toast.success(isEditMode ? 'Bill JPEG updated successfully' : 'Bill JPEG generated successfully');
         // Add a delay before navigating to ensure user sees the success message
         setTimeout(() => {
@@ -2385,8 +2385,8 @@ export default function CreateBill() {
                 <X className="w-6 h-6" />
               </button>
             </div>
-            <div className="p-4 overflow-y-auto overflow-x-hidden bg-gray-100 flex-1 flex justify-center">
-              <div className="bg-white shadow-lg origin-top transform scale-[0.45] sm:scale-75 md:scale-100 shrink-0 w-[794px]">
+            <div className="p-2 overflow-y-auto bg-gray-100 flex-1 flex justify-center">
+              <div className="bill-preview-wrapper bg-white shadow-lg shrink-0 w-[794px]">
                 <BillInvoiceTemplate {...invoiceProps} />
               </div>
             </div>

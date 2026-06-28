@@ -12,10 +12,12 @@ export const generateBillJPEG = async (
 ): Promise<void> => {
   const container = document.createElement('div');
   Object.assign(container.style, {
-    position: 'fixed',
+    // Position off-screen to the left so it never flashes on mobile,
+    // and is not affected by the page's scroll position.
+    position: 'absolute',
     top: '0',
-    left: '0',
-    zIndex: '-9999',
+    left: '-9999px',
+    zIndex: '-1',
     width: '794px',
     backgroundColor: '#ffffff',
     pointerEvents: 'none',
@@ -24,10 +26,14 @@ export const generateBillJPEG = async (
 
   const root = createRoot(container);
 
-  // flushSync forces React to render synchronously — no setTimeout needed
   flushSync(() => {
     root.render(React.createElement(BillInvoiceTemplate, billData));
   });
+
+  // Wait for all fonts (Noto Sans Gujarati etc.) to fully load before
+  // capturing — without this, html2canvas may render with a fallback font
+  // that has different metrics, causing text to shift inside cells.
+  await document.fonts.ready;
 
   try {
     const canvas = await html2canvas(container, {
@@ -39,6 +45,10 @@ export const generateBillJPEG = async (
       height: container.scrollHeight,
       logging: false,
       windowWidth: 794,
+      // Scroll offset must be 0/0 for an absolutely-positioned off-screen
+      // element so html2canvas reads it at its true document position.
+      scrollX: 9999,   // cancel the -9999px left offset
+      scrollY: 0,
     });
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
