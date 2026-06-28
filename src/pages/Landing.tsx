@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Sparkles, ArrowRight, CheckCircle, Phone, Mail, MapPin, PlayCircle, 
+import {
+  Sparkles, ArrowRight, CheckCircle, Phone, Mail, MapPin, PlayCircle,
   Menu, X, Package, Shield, Clock, TrendingUp, Users, BarChart3,
   FileText, Database, Download, ChevronDown, Star, Quote, ArrowUpRight
 } from 'lucide-react';
@@ -22,7 +22,7 @@ const Landing = () => {
   const t = (key) => {
     const translations = {
       gu: {
-        appName: 'નીલકંઠ પ્લેટ ડેપો',
+        appName: 'ખાતા કેન્દ્ર',
         slogan: 'તમારા બાંધકામને મજબૂત બનાવો, અમારી પ્લેટ્સ સાથે',
         subSlogan: 'ડિજિટલ ભાડા વ્યવસ્થાપન સાથે વિશ્વસનીય સેવા',
         login: 'લોગિન',
@@ -239,7 +239,7 @@ const Landing = () => {
     {
       name: language === 'gu' ? 'રાજેશ પટેલ' : 'Rajesh Patel',
       company: 'ABC Construction, સુરત',
-      text: language === 'gu' 
+      text: language === 'gu'
         ? 'અત્યંત ઉપયોગી સિસ્ટમ છે. બધું ડિજિટલ હોવાથી કોઈ ગોળમાળ નથી. બિલિંગ પણ એકદમ સચોટ અને પારદર્શક છે.'
         : 'Very useful system. Everything is digital so no confusion. Billing is also accurate and transparent.',
       rating: 5
@@ -265,7 +265,7 @@ const Landing = () => {
   const faqs = [
     {
       q: language === 'gu' ? 'મિનિમમ ભાડા સમયગાળો કેટલો છે?' : 'What is the minimum rental period?',
-      a: language === 'gu' 
+      a: language === 'gu'
         ? 'મિનિમમ 30 દિવસનો ભાડો લેવાય છે. આનાથી ઓછા દિવસ માટે પણ 30 દિવસનું ચાર્જ લાગશે.'
         : 'Minimum rental period is 30 days. For less than 30 days, 30 days charge will apply.'
     },
@@ -307,15 +307,14 @@ const Landing = () => {
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className={`fixed top-4 left-4 right-4 z-50 transition-all duration-500 ${
-          scrolled 
-            ? 'bg-white/90 backdrop-blur-xl shadow-lg border border-gray-200/50' 
+        className={`fixed top-4 left-4 right-4 z-50 transition-all duration-500 ${scrolled
+            ? 'bg-white/90 backdrop-blur-xl shadow-lg border border-gray-200/50'
             : 'bg-white/70 backdrop-blur-md border border-white/20'
-        } rounded-2xl`}
+          } rounded-2xl`}
       >
         <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <motion.div 
+            <motion.div
               className="flex items-center gap-3 cursor-pointer"
               whileHover={{ scale: 1.05 }}
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -527,7 +526,7 @@ const Landing = () => {
               {language === 'gu' ? 'અમારી સિસ્ટમ કેવી રીતે કામ કરે છે' : 'How Our System Works'}
             </h2>
             <p className="max-w-2xl mx-auto text-xl text-gray-600">
-              {language === 'gu' 
+              {language === 'gu'
                 ? '4 સરળ પગલાંમાં તમારા બાંધકામ માટે પ્લેટ્સ મેળવો'
                 : 'Get plates for your construction in 4 simple steps'}
             </p>
@@ -681,7 +680,7 @@ const Landing = () => {
               {language === 'gu' ? 'સિસ્ટમ સુવિધાઓ' : 'System Features'}
             </h2>
             <p className="max-w-2xl mx-auto text-xl text-gray-600">
-              {language === 'gu' 
+              {language === 'gu'
                 ? 'સંપૂર્ણ ડિજિટલ સોલ્યુશન તમારા બિઝનેસ માટે'
                 : 'Complete digital solution for your business'}
             </p>
@@ -705,8 +704,8 @@ const Landing = () => {
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-2xl font-bold text-gray-900">{feature.title}</h3>
-                      <ChevronDown 
-                        className={`w-5 h-5 transition-transform ${activeFeature === index ? 'rotate-180' : ''}`} 
+                      <ChevronDown
+                        className={`w-5 h-5 transition-transform ${activeFeature === index ? 'rotate-180' : ''}`}
                       />
                     </div>
                     <p className="mb-4 text-gray-600">{feature.description}</p>
@@ -811,8 +810,8 @@ const Landing = () => {
                   className="flex items-center justify-between w-full p-6 text-left transition-colors hover:bg-gray-50"
                 >
                   <span className="text-lg font-bold text-gray-900">{faq.q}</span>
-                  <ChevronDown 
-                    className={`w-5 h-5 transition-transform flex-shrink-0 ml-4 ${activeFaq === index ? 'rotate-180' : ''}`} 
+                  <ChevronDown
+                    className={`w-5 h-5 transition-transform flex-shrink-0 ml-4 ${activeFaq === index ? 'rotate-180' : ''}`}
                   />
                 </button>
                 <AnimatePresence>
@@ -845,7 +844,7 @@ const Landing = () => {
               {language === 'gu' ? 'તૈયાર છો શરૂ કરવા?' : 'Ready to Get Started?'}
             </h2>
             <p className="mb-8 text-xl text-white/90">
-              {language === 'gu' 
+              {language === 'gu'
                 ? 'આજે જ લોગિન કરો અને તમારા બિઝનેસને ડિજિટલ બનાવો'
                 : 'Login today and digitize your business'}
             </p>
@@ -871,7 +870,7 @@ const Landing = () => {
                 <span className="text-xl font-bold text-white">{t('appName')}</span>
               </div>
               <p className="mb-4 text-sm text-gray-400">
-                {language === 'gu' 
+                {language === 'gu'
                   ? 'તમારા બાંધકામ પ્રોજેક્ટ્સ માટે વિશ્વસનીય પ્લેટ ભાડા સેવા'
                   : 'Reliable plate rental service for your construction projects'}
               </p>

@@ -156,6 +156,7 @@ export default function CreateBill() {
   const [showPreview, setShowPreview] = useState(false);
   const [pendingAmount, setPendingAmount] = useState<number>(0);
   const [lastUnpaidBillNumber, setLastUnpaidBillNumber] = useState<string>("");
+  const [billingMode, setBillingMode] = useState<'standard' | 'skip_first_jama'>('standard');
 
   useEffect(() => {
     if (clientId) {
@@ -760,7 +761,7 @@ export default function CreateBill() {
       }
 
       // Fetch Jama challans with their items
-      const { data: jamaChallans, error: jamaError } = await supabase
+      const { data: rawJamaChallans, error: jamaError } = await supabase
         .from("jama_challans")
         .select(
           `
@@ -768,6 +769,7 @@ export default function CreateBill() {
           jama_date,
           driver_name,
           alternative_site,
+          is_all_return,
           items:jama_items (
             size_1_qty,
             size_2_qty,
@@ -793,9 +795,20 @@ export default function CreateBill() {
         .eq("client_id", clientId)
         .order("jama_date", { ascending: true });
 
-      console.log("Jama Challans:", jamaChallans);
-
       if (jamaError) throw jamaError;
+
+      // Apply billing mode filter
+      let jamaChallans = rawJamaChallans;
+      if (
+        billingMode === 'skip_first_jama' &&
+        rawJamaChallans &&
+        rawJamaChallans.length > 0 &&
+        !rawJamaChallans[0].is_all_return
+      ) {
+        jamaChallans = rawJamaChallans.slice(1);
+      }
+
+      console.log("Jama Challans (mode:", billingMode, "):", jamaChallans);
 
       if (udharChallans && udharChallans.length > 0) {
         const earliestDate = udharChallans[0].udhar_date;
@@ -1097,6 +1110,33 @@ export default function CreateBill() {
                 </div>
               </div>
             </form>
+          </div>
+
+          {/* Billing Mode Selector */}
+          <div className="p-3 bg-white border border-gray-200 rounded-xl">
+            <p className="mb-2 text-xs font-medium text-gray-600">Billing Method</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBillingMode('standard')}
+                className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  billingMode === 'standard'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Standard
+              </button>
+              <button
+                onClick={() => setBillingMode('skip_first_jama')}
+                className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  billingMode === 'skip_first_jama'
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Skip First Jama (No All Return)
+              </button>
+            </div>
           </div>
 
           {/* Calculate Button */}

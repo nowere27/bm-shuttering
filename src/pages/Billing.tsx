@@ -146,7 +146,7 @@ export default function Billing() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navbar />
-      <main className="flex-1 min-w-0">
+      <main className="flex-1 w-full ml-0 overflow-y-auto pt-[72px] lg:pt-0 lg:ml-64 h-[100dvh]">
         <div className="container max-w-6xl px-4 py-4 mx-auto sm:px-6 lg:px-8 sm:py-6 lg:py-8">
           <div className="items-center justify-between hidden p-4 mb-4 bg-white border border-gray-200 sm:flex rounded-xl">
             <div>

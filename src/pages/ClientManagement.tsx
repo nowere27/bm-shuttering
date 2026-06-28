@@ -453,14 +453,15 @@ const ClientManagement: React.FC = () => {
                 <h1 className="text-2xl font-bold text-gray-900 lg:text-3xl">{t('clients')}</h1>
                 <p className="mt-1 text-xs text-gray-600">{t('search')}</p>
               </div>
-              <button
-                onClick={() => setShowForm(true)}
-                className="items-center hidden gap-2 btn-primary lg:inline-flex"
-                style={{ minHeight: '40px' }}
-              >
-                <UserPlus size={20} />
-                {t('addNewClient')}
-              </button>
+              {!showForm && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-blue-600 transition-colors bg-blue-50 rounded-lg hover:bg-blue-100 touch-manipulation active:scale-95"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {t('addNewClient')}
+                </button>
+              )}
             </div>
           </div>
 
@@ -526,50 +527,46 @@ const ClientManagement: React.FC = () => {
 
 
 
-          {/* Client Form Section - Hidden on Mobile, Show on Desktop */}
-          <div className="hidden p-4 mb-6 bg-white border border-gray-200 shadow-sm lg:block lg:p-6 lg:mb-8 rounded-xl">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${editingClient ? 'bg-yellow-100' : 'bg-blue-100'}`}>
-                  <UserPlus size={20} className={editingClient ? 'text-yellow-600' : 'text-blue-600'} />
+          {/* Client Form Modal (Centered on all screens) */}
+          {showForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black bg-opacity-50 sm:p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-y-auto max-h-[95vh] p-4 sm:p-6 animate-scale-in">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className={`p-1.5 rounded-lg ${editingClient ? 'bg-yellow-100' : 'bg-blue-100'}`}>
+                      <UserPlus size={18} className={editingClient ? 'text-yellow-600' : 'text-blue-600'} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-gray-900 sm:text-lg">
+                        {editingClient ? t('editClient') : t('addNewClient')}
+                      </h3>
+                      <p className="text-[10px] sm:text-xs text-gray-500">
+                        {editingClient ? t('editClient') : t('addNewClient')}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCancel}
+                    className="p-2 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {editingClient ? t('editClient') : t('addNewClient')}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {editingClient ? t('editClient') : t('addNewClient')}
-                  </p>
-                </div>
-              </div>
-              {!showForm && (
-                <button
-                  onClick={() => setShowForm(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm hover:shadow-md"
-                >
-                  <UserPlus size={18} />
-                  {t('addNewClient')}
-                </button>
-              )}
-            </div>
 
-            {showForm ? (
-              <div className="pt-6 border-t border-gray-200">
-                <ClientForm
-                  initialData={editingClient}
-                  onSubmit={handleSubmit}
-                  onCancel={handleCancel}
-                />
-              </div>
-            ) : (
-              <div className="py-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 mb-4 bg-gray-100 rounded-full">
-                  <UserPlus size={32} className="text-gray-400" />
+                {/* Form Content */}
+                <div>
+                  <ClientForm
+                    initialData={editingClient}
+                    onSubmit={handleSubmit}
+                    onCancel={handleCancel}
+                  />
                 </div>
-                <p className="text-sm text-gray-500">{t('clickToAdd')}</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Client List Section - Compact */}
           <div className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm sm:p-3 lg:p-6 sm:rounded-xl">
@@ -626,59 +623,21 @@ const ClientManagement: React.FC = () => {
           <Plus className="text-white w-7 h-7" strokeWidth={2.5} />
         </button>
 
-        {/* Mobile Form Modal/Sheet */}
-        {showForm && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black bg-opacity-50"
-              onClick={handleCancel}
-            ></div>
-            <div className="absolute inset-x-0 bottom-0 overflow-y-auto bg-white rounded-t-2xl max-h-[90vh] animate-slide-up">
-              <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-white border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${editingClient ? 'bg-yellow-100' : 'bg-blue-100'}`}>
-                    <UserPlus className={`w-5 h-5 ${editingClient ? 'text-yellow-600' : 'text-blue-600'}`} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">
-                      {editingClient ? t('editClient') : t('addNewClient')}
-                    </h3>
-                    <p className="text-[10px] text-gray-500">
-                      {editingClient ? t('editClient') : t('addNewClient')}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCancel}
-                  className="p-2 text-gray-400 transition-colors rounded-lg hover:bg-gray-100 hover:text-gray-600"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="p-4">
-                <ClientForm
-                  initialData={editingClient}
-                  onSubmit={handleSubmit}
-                  onCancel={handleCancel}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Mobile drawer replaced by unified centered modal dialog above */}
       </main>
       <style>{`
-        @keyframes slide-up {
+        @keyframes scale-in {
           from {
-            transform: translateY(100%);
+            transform: scale(0.95);
+            opacity: 0;
           }
           to {
-            transform: translateY(0);
+            transform: scale(1);
+            opacity: 1;
           }
         }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
+        .animate-scale-in {
+          animation: scale-in 0.2s ease-out;
         }
       `}</style>
     </div>

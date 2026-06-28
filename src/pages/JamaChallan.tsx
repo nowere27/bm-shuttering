@@ -241,6 +241,8 @@ interface ChallanDetailsStepProps {
   showSuccess: boolean;
   hideExtraColumns: boolean;
   setHideExtraColumns: (value: boolean) => void;
+  isAllReturn: boolean;
+  onAllReturn: () => void;
 }
 
 
@@ -264,7 +266,9 @@ const ChallanDetailsStep: React.FC<ChallanDetailsStepProps> = ({
   errors,
   showSuccess,
   hideExtraColumns,
-  setHideExtraColumns
+  setHideExtraColumns,
+  isAllReturn,
+  onAllReturn,
 }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -365,6 +369,17 @@ const ChallanDetailsStep: React.FC<ChallanDetailsStepProps> = ({
                   <span>
                     {t('columns2')}
                   </span>
+                </button>
+                <button
+                  onClick={onAllReturn}
+                  className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 py-2 sm:px-3 text-xs font-medium rounded-md sm:rounded-lg transition-colors touch-manipulation active:scale-95 border whitespace-nowrap ${
+                    isAllReturn
+                      ? 'bg-green-600 text-white border-green-600'
+                      : 'text-green-600 bg-green-50 hover:bg-green-100 border-green-100'
+                  }`}
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span>All Return</span>
                 </button>
               </div>
               {errors.challanNumber && (
@@ -580,6 +595,7 @@ const JamaChallan: React.FC = () => {
   });
   const [outstandingBalances, setOutstandingBalances] = useState<{ [key: number]: number }>({});
   const [borrowedOutstanding, setBorrowedOutstanding] = useState<{ [key: number]: number }>({});
+  const [isAllReturn, setIsAllReturn] = useState(false);
 
 
   const fetchPreviousDriverNames = async () => {
@@ -741,6 +757,7 @@ const JamaChallan: React.FC = () => {
 
       setOutstandingBalances(balances);
       setBorrowedOutstanding(borrowedBal);
+      setIsAllReturn(false);
 
       // Auto-show borrowed column if there are borrowed items
       const hasBorrowedItems = Object.values(borrowedBal).some(val => val > 0);
@@ -799,6 +816,16 @@ const JamaChallan: React.FC = () => {
     }
   };
 
+
+  const handleAllReturn = () => {
+    setIsAllReturn(true);
+    const newItems = { ...items };
+    for (let i = 1; i <= 9; i++) {
+      (newItems as any)[`size_${i}_qty`] = outstandingBalances[i] || 0;
+      (newItems as any)[`size_${i}_borrowed`] = borrowedOutstanding[i] || 0;
+    }
+    setItems(newItems);
+  };
 
   const handleSave = async () => {
     const newErrors: { [key: string]: string } = {};
@@ -892,6 +919,7 @@ const JamaChallan: React.FC = () => {
           client_id: selectedClient.id,
           jama_date: date,
           driver_name: driverName,
+          is_all_return: isAllReturn,
         },
       ]);
 
@@ -1027,6 +1055,8 @@ const JamaChallan: React.FC = () => {
                 showSuccess={showSuccess}
                 hideExtraColumns={hideExtraColumns}
                 setHideExtraColumns={setHideExtraColumns}
+                isAllReturn={isAllReturn}
+                onAllReturn={handleAllReturn}
               />
             )
           )}

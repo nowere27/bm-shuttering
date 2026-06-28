@@ -143,7 +143,7 @@ export const translations = {
     days: "દિવસ",
 
     // Existing Translations
-    appName: 'નીલકંઠ પ્લેટ ડેપો',
+    appName: 'ખાતા કેન્દ્ર',
     greeting: 'નમસ્તે',
     dashboard: 'રોજમેળ',
     addClient: 'ગ્રાહકો',
@@ -284,7 +284,7 @@ export const translations = {
     duplicateChallan: 'આ ચલણ નંબર પહેલેથી અસ્તિત્વમાં છે',
     invalidCredentials: 'અમાન્ય વપરાશકર્તા નામ અથવા પાસવર્ડ',
 
-    heroTitle: 'નીલકંઠ પ્લેટ ડેપો',
+    heroTitle: 'ખાતા કેન્દ્ર',
     heroSubtitle: 'સેંટરિંગ પ્લેટ ભાડા સેવાઓ',
     aboutText: 'અમે બાંધકામ ઉદ્યોગ માટે ઉચ્ચ ગુણવત્તાની સેંટરિંગ પ્લેટ ભાડા સેવાઓ પ્રદાન કરીએ છીએ.',
     ourServices: 'અમારી સેવાઓ',
@@ -381,7 +381,7 @@ export const translations = {
     newestFirst: 'નવા પહેલા',
     showing: 'દર્શાવે છે',
     of: 'માંથી',
-    clients: 'ગ્રાહક્સ',
+    clients: 'ગ્રાહસ',
     noMatchingClients: 'કોઈ ગ્રાહક મેળ ખાતો નથી',
     clientExists: "આ ગ્રાહક ID પહેલેથી જ અસ્તિત્વમાં છે",
     dailyRentPrice: 'દૈનિક ભાડા દર',

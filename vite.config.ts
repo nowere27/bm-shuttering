@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'નીલકંઠ પ્લેટ ડેપો',
+        name: 'ખાતા કેન્દ્ર',
         short_name: 'પ્લેટ ડેપો',
-        description: 'નીલકંઠ પ્લેટ ડેપો બિલિંગ અને ગોડાઉન સ્ટોક એપ્લિકેશન',
+        description: 'ખાતા કેન્દ્ર બિલિંગ અને ગોડાઉન સ્ટોક એપ્લિકેશન',
         theme_color: '#2563eb',
         background_color: '#f3f4f6',
         display: 'standalone',

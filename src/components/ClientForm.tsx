@@ -79,81 +79,84 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialData, onSubmit, onCancel
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`space-y-4 ${isQuickAdd ? 'p-4 bg-blue-50 rounded-lg' : ''}`}>
-      {/* Client ID and Daily Rent - Side by side on all screens */}
-      <div className="grid grid-cols-2 gap-3">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Form Fields Container */}
+      <div className="p-4 sm:p-5 bg-blue-50/50 border border-blue-100/50 rounded-xl space-y-4">
+        {/* Client ID and Daily Rent - Side by side on all screens */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700">
+              {t('clientNicName')} *
+            </label>
+            <input
+              type="text"
+              value={formData.client_nic_name}
+              onChange={(e) => setFormData({ ...formData, client_nic_name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              minLength={2}
+              maxLength={50}
+            />
+            {errors.client_nic_name && <p className="mt-1 text-sm text-red-600">{errors.client_nic_name}</p>}
+          </div>
+
+          <div>
+            <label className="block mb-1 text-sm font-medium text-gray-700">
+              {t('dailyRentPrice')}
+            </label>
+            <input
+              type="number"
+              value={formData.daily_rent_price ?? 1}
+              onChange={(e) => setFormData({ ...formData, daily_rent_price: parseFloat(e.target.value) || 1 })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              min={0}
+              step={0.1}
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block mb-1 text-sm font-medium text-gray-700">
-            {t('clientNicName')} *
+            {t('clientName')} *
           </label>
           <input
             type="text"
-            value={formData.client_nic_name}
-            onChange={(e) => setFormData({ ...formData, client_nic_name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            minLength={2}
-            maxLength={50}
+            value={formData.client_name}
+            onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            minLength={3}
+            maxLength={100}
           />
-          {errors.client_nic_name && <p className="mt-1 text-sm text-red-600">{errors.client_nic_name}</p>}
+          {errors.client_name && <p className="mt-1 text-sm text-red-600">{errors.client_name}</p>}
         </div>
 
         <div>
           <label className="block mb-1 text-sm font-medium text-gray-700">
-            {t('dailyRentPrice')}
+            {t('site')} *
           </label>
           <input
-            type="number"
-            value={formData.daily_rent_price ?? 1}
-            onChange={(e) => setFormData({ ...formData, daily_rent_price: parseFloat(e.target.value) || 1 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            min={0}
-            step={0.1}
+            type="text"
+            value={formData.site}
+            onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            minLength={2}
+            maxLength={100}
           />
+          {errors.site && <p className="mt-1 text-sm text-red-600">{errors.site}</p>}
         </div>
-      </div>
 
-      <div>
-        <label className="block mb-1 text-sm font-medium text-gray-700">
-          {t('clientName')} *
-        </label>
-        <input
-          type="text"
-          value={formData.client_name}
-          onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          minLength={3}
-          maxLength={100}
-        />
-        {errors.client_name && <p className="mt-1 text-sm text-red-600">{errors.client_name}</p>}
-      </div>
-
-      <div>
-        <label className="block mb-1 text-sm font-medium text-gray-700">
-          {t('site')} *
-        </label>
-        <input
-          type="text"
-          value={formData.site}
-          onChange={(e) => setFormData({ ...formData, site: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          minLength={2}
-          maxLength={100}
-        />
-        {errors.site && <p className="mt-1 text-sm text-red-600">{errors.site}</p>}
-      </div>
-
-      <div>
-        <label className="block mb-1 text-sm font-medium text-gray-700">
-          {t('primaryPhone')} *
-        </label>
-        <input
-          type="text"
-          value={formData.primary_phone_number}
-          onChange={(e) => setFormData({ ...formData, primary_phone_number: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          maxLength={50}
-        />
-        {errors.primary_phone_number && <p className="mt-1 text-sm text-red-600">{errors.primary_phone_number}</p>}
+        <div>
+          <label className="block mb-1 text-sm font-medium text-gray-700">
+            {t('primaryPhone')} *
+          </label>
+          <input
+            type="text"
+            value={formData.primary_phone_number}
+            onChange={(e) => setFormData({ ...formData, primary_phone_number: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            maxLength={50}
+          />
+          {errors.primary_phone_number && <p className="mt-1 text-sm text-red-600">{errors.primary_phone_number}</p>}
+        </div>
       </div>
 
       <div className="flex gap-3">
