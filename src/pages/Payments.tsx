@@ -158,7 +158,7 @@ export default function Payments() {
             // 4. Construct Full Bill Object
             const fullBillData = {
                 companyDetails: {
-                    name: "Nilkanth Plate Depo",
+                    name: "ખાતા કેન્દ્ર",
                     address: "10, Ajmaldham Society, Simada Gam, Surat.",
                     phone: "93287 28228",
                 },

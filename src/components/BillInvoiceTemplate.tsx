@@ -146,8 +146,7 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
               maxWidth: '700px',
               backgroundColor: '#fff'
             }}>
-              <span style={{ fontSize: '48px', fontWeight: 'bold', marginRight: '20px' }}>નિલકંઠ</span>
-              <span style={{ fontSize: '32px', fontWeight: 'bold' }}>પ્લેટ ડેપો</span>
+              <span style={{ fontSize: '44px', fontWeight: 'bold' }}>ખાતા કેન્દ્ર</span>
             </div>
           </div>
 

@@ -899,9 +899,9 @@ export default function CreateBill() {
 
   const invoiceProps = {
     companyDetails: {
-      name: "Nilkanth Plate Depot",
-      address: "Street Address",
-      phone: "Phone Number",
+      name: "ખાતા કેન્દ્ર",
+      address: "10, Ajmaldham Society, Simada Gam, Surat.",
+      phone: "93287 28228",
     },
     billDetails: {
       billNumber: billData.billNumber,

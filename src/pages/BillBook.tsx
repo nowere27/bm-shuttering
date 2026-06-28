@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, RefreshCw, Filter, Download, X, Wallet, FileText } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { supabase } from "../utils/supabase";
@@ -220,7 +220,7 @@ export default function BillBook() {
       // 4. Construct Full Bill Object
       const fullBillData = {
         companyDetails: {
-          name: "Nilkanth Plate Depo",
+          name: "ખાતા કેન્દ્ર",
           address: "10, Ajmaldham Society, Simada Gam, Surat.",
           phone: "93287 28228",
         },
@@ -526,23 +526,6 @@ export default function BillBook() {
         </div>
       )}
 
-      {/* Hidden Template for Download */}
-      {selectedBill && (
-        <div
-          id="invoice-template"
-          ref={downloadTemplateRef}
-          style={{
-            position: 'fixed',
-            top: '-9999px',
-            left: '-9999px',
-            width: '794px',
-            backgroundColor: 'white',
-            zIndex: -1
-          }}
-        >
-          <BillInvoiceTemplate {...selectedBill} />
-        </div>
-      )}
     </div>
   );
 }
