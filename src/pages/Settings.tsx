@@ -51,6 +51,9 @@ const Settings: React.FC = () => {
         return;
       }
 
+      // Generate a compulsory random 4-digit PIN for backup
+      const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
@@ -88,8 +91,17 @@ const Settings: React.FC = () => {
         const hexId = Array.from(rawId).map(b => b.toString(16).padStart(2, '0')).join('');
         
         localStorage.setItem('security_lock_cred_id', hexId);
+        localStorage.setItem('security_lock_pin', generatedPin);
+        
+        setPin(generatedPin);
         setIsBiometricRegistered(true);
-        toast.success(language === 'gu' ? "બાયોમેટ્રિક સફળતાપૂર્વક રજીસ્ટર થયું" : "Biometrics successfully registered!");
+        
+        toast.success(
+          language === 'gu' 
+            ? `બાયોમેટ્રિક સેટ થયું! તમારો બેકઅપ પિન: ${generatedPin}` 
+            : `Biometrics set! Your backup PIN: ${generatedPin}`,
+          { duration: 6000 }
+        );
       }
     } catch (err: any) {
       console.error(err);
@@ -499,22 +511,37 @@ const Settings: React.FC = () => {
                     
                     {/* PIN Input */}
                     <div className="max-w-xs">
-                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                        {language === 'gu' ? '૪-અંકનો સુરક્ષા પિન' : '4-Digit Security PIN'}
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
+                        <span>{language === 'gu' ? '૪-અંકનો સુરક્ષા પિન' : '4-Digit Security PIN'}</span>
+                        {isBiometricRegistered && (
+                          <span className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">
+                            {language === 'gu' ? 'બાયોમેટ્રિક બેકઅપ પિન' : 'Biometric Backup PIN'}
+                          </span>
+                        )}
                       </label>
                       <div className="relative">
                         <Key className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                         <input
-                          type="password"
+                          type={isBiometricRegistered ? "text" : "password"}
                           pattern="[0-9]*"
                           inputMode="numeric"
                           maxLength={4}
                           value={pin}
+                          disabled={isBiometricRegistered}
                           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          className="w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center"
+                          className={`w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center ${
+                            isBiometricRegistered ? 'bg-gray-105 font-bold cursor-not-allowed text-blue-600' : ''
+                          }`}
                           placeholder="••••"
                         />
                       </div>
+                      {isBiometricRegistered && (
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {language === 'gu' 
+                            ? 'બાયોમેટ્રિક સક્રિય હોવાને કારણે પિન આપોઆપ જનરેટ થયો છે.' 
+                            : 'This PIN is automatically generated for biometric backup recovery.'}
+                        </p>
+                      )}
                     </div>
 
                     {/* Biometrics Setup */}
