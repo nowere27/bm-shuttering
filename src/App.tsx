@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 
 import { SettingsProvider } from './contexts/SettingsContext';
+import LockScreen from './components/LockScreen';
 
 // Lazy-load every page so the initial bundle only contains the shell + auth logic
 const Login = lazy(() => import('./pages/Login'));
@@ -44,69 +45,71 @@ function App() {
     <AuthProvider>
       <LanguageProvider>
         <SettingsProvider>
-          <Router>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                <Route path="/" element={<RootRoute><Login /></RootRoute>} />
-                <Route path="/login" element={<Navigate to="/" replace />} />
-                <Route
-                  path="/dashboard"
-                  element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
-                />
-                <Route
-                  path="/bill-book"
-                  element={<ProtectedRoute><BillBook /></ProtectedRoute>}
-                />
-                <Route
-                  path="/payments"
-                  element={<ProtectedRoute><Payments /></ProtectedRoute>}
-                />
-                <Route
-                  path="/clients"
-                  element={<ProtectedRoute><ClientManagement /></ProtectedRoute>}
-                />
-                <Route
-                  path="/udhar-challan"
-                  element={<ProtectedRoute><UdharChallan /></ProtectedRoute>}
-                />
-                <Route
-                  path="/jama-challan"
-                  element={<ProtectedRoute><JamaChallan /></ProtectedRoute>}
-                />
-                <Route
-                  path="/stock"
-                  element={<ProtectedRoute><StockManagement /></ProtectedRoute>}
-                />
-                <Route
-                  path="/stock-history"
-                  element={<ProtectedRoute><StockHistory /></ProtectedRoute>}
-                />
-                <Route
-                  path="/challan-book"
-                  element={<ProtectedRoute><ChallanBook /></ProtectedRoute>}
-                />
-                <Route
-                  path="/client-ledger"
-                  element={<ProtectedRoute><ClientLedger /></ProtectedRoute>}
-                />
-                <Route
-                  path="/settings"
-                  element={<ProtectedRoute><Settings /></ProtectedRoute>}
-                />
-                <Route path="/billing">
+          <LockScreen>
+            <Router>
+              <Suspense fallback={<LoadingSpinner />}>
+                <Routes>
+                  <Route path="/" element={<RootRoute><Login /></RootRoute>} />
+                  <Route path="/login" element={<Navigate to="/" replace />} />
                   <Route
-                    index
-                    element={<ProtectedRoute><Billing /></ProtectedRoute>}
+                    path="/dashboard"
+                    element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
                   />
                   <Route
-                    path="create/:clientId"
-                    element={<ProtectedRoute><CreateBill /></ProtectedRoute>}
+                    path="/bill-book"
+                    element={<ProtectedRoute><BillBook /></ProtectedRoute>}
                   />
-                </Route>
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
-              </Routes>
-            </Suspense>
-          </Router>
+                  <Route
+                    path="/payments"
+                    element={<ProtectedRoute><Payments /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/clients"
+                    element={<ProtectedRoute><ClientManagement /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/udhar-challan"
+                    element={<ProtectedRoute><UdharChallan /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/jama-challan"
+                    element={<ProtectedRoute><JamaChallan /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/stock"
+                    element={<ProtectedRoute><StockManagement /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/stock-history"
+                    element={<ProtectedRoute><StockHistory /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/challan-book"
+                    element={<ProtectedRoute><ChallanBook /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/client-ledger"
+                    element={<ProtectedRoute><ClientLedger /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/settings"
+                    element={<ProtectedRoute><Settings /></ProtectedRoute>}
+                  />
+                  <Route path="/billing">
+                    <Route
+                      index
+                      element={<ProtectedRoute><Billing /></ProtectedRoute>}
+                    />
+                    <Route
+                      path="create/:clientId"
+                      element={<ProtectedRoute><CreateBill /></ProtectedRoute>}
+                    />
+                  </Route>
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                </Routes>
+              </Suspense>
+            </Router>
+          </LockScreen>
         </SettingsProvider>
       </LanguageProvider>
     </AuthProvider>

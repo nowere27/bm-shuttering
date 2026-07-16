@@ -2,7 +2,7 @@ import React from 'react';
 import Navbar from '../components/Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Settings as SettingsIcon, Globe, Layers, CheckCircle, Download, Type } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Layers, CheckCircle, Download, Type, Lock, Shield, Fingerprint, Key } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 const Settings: React.FC = () => {
@@ -19,8 +19,90 @@ const Settings: React.FC = () => {
     setShowDriverDetails,
   } = useSettings();
 
+  const [securityEnabled, setSecurityEnabled] = React.useState(() => localStorage.getItem('security_lock_enabled') === 'true');
+  const [pin, setPin] = React.useState(() => localStorage.getItem('security_lock_pin') || '1234');
+  const [hasBiometrics, setHasBiometrics] = React.useState(false);
+  const [isBiometricRegistered, setIsBiometricRegistered] = React.useState(() => !!localStorage.getItem('security_lock_cred_id'));
+
+  React.useEffect(() => {
+    if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then(available => setHasBiometrics(available))
+        .catch(err => console.error(err));
+    }
+  }, []);
+
   const handleSave = () => {
+    if (securityEnabled) {
+      if (!/^\d{4}$/.test(pin)) {
+        toast.error(language === 'gu' ? 'પિન બરાબર ૪ અંકોનો હોવો જોઈએ!' : 'PIN must be exactly 4 digits!');
+        return;
+      }
+      localStorage.setItem('security_lock_pin', pin);
+    }
+    localStorage.setItem('security_lock_enabled', String(securityEnabled));
     toast.success(t('settingsSaved') || 'Settings saved successfully!');
+  };
+
+  const registerBiometrics = async () => {
+    try {
+      if (!window.PublicKeyCredential) {
+        toast.error("Biometrics not supported on this device/browser");
+        return;
+      }
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      const creationOptions: CredentialCreationOptions = {
+        publicKey: {
+          challenge,
+          rp: {
+            name: "Khata Kendra PWA",
+            id: window.location.hostname || "localhost"
+          },
+          user: {
+            id: userId,
+            name: "admin@khatakendra.com",
+            displayName: "Administrator"
+          },
+          pubKeyCredParams: [
+            { alg: -7, type: "public-key" }, // ES256
+            { alg: -257, type: "public-key" } // RS256
+          ],
+          timeout: 60000,
+          authenticatorSelection: {
+            authenticatorAttachment: "platform",
+            userVerification: "required"
+          }
+        }
+      };
+
+      const credential = await navigator.credentials.create(creationOptions) as PublicKeyCredential;
+      if (credential) {
+        // Convert arrayBuffer to hex string to store in localStorage
+        const rawId = new Uint8Array(credential.rawId);
+        const hexId = Array.from(rawId).map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        localStorage.setItem('security_lock_cred_id', hexId);
+        setIsBiometricRegistered(true);
+        toast.success(language === 'gu' ? "બાયોમેટ્રિક સફળતાપૂર્વક રજીસ્ટર થયું" : "Biometrics successfully registered!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+        toast.error(language === 'gu' ? "નોંધણી નિષ્ફળ રહી" : "Registration failed");
+      }
+    }
+  };
+
+  const removeBiometrics = () => {
+    localStorage.removeItem('security_lock_cred_id');
+    setIsBiometricRegistered(false);
+    toast.success(language === 'gu' ? "બાયોમેટ્રિક દૂર કરવામાં આવ્યું" : "Biometrics removed");
   };
 
   return (
@@ -375,6 +457,102 @@ const Settings: React.FC = () => {
                     />
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* PWA Security Settings Card */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                <Shield className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-gray-900 text-base sm:text-lg">
+                  {language === 'gu' ? 'એપ્લિકેશન સુરક્ષા સેટિંગ્સ' : 'App Security & Lock Settings'}
+                </h3>
+              </div>
+              <div className="p-4 sm:p-6 space-y-6">
+                
+                {/* Enable Lock Switch */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900">
+                      {language === 'gu' ? 'એપ લોક ચાલુ કરો' : 'Enable Application Lock'}
+                    </label>
+                    <p className="text-xs text-gray-500">
+                      {language === 'gu' ? 'મોબાઇલ PWA શરૂ થવા પર પિન અથવા ફિંગરપ્રિન્ટ પૂછશે.' : 'Require PIN or Biometrics authentication on app startup.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSecurityEnabled(!securityEnabled)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      securityEnabled ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        securityEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {securityEnabled && (
+                  <div className="space-y-4 pt-4 border-t border-gray-100">
+                    
+                    {/* PIN Input */}
+                    <div className="max-w-xs">
+                      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                        {language === 'gu' ? '૪-અંકનો સુરક્ષા પિન' : '4-Digit Security PIN'}
+                      </label>
+                      <div className="relative">
+                        <Key className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
+                        <input
+                          type="password"
+                          pattern="[0-9]*"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={pin}
+                          onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          className="w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center"
+                          placeholder="••••"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Biometrics Setup */}
+                    {hasBiometrics && (
+                      <div className="pt-4 border-t border-gray-100">
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                          {language === 'gu' ? 'બાયોમેટ્રિક લોક (ફિંગરપ્રિન્ટ / ફેસ આઈડી)' : 'Biometric Lock (Fingerprint / FaceID)'}
+                        </label>
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          {isBiometricRegistered ? (
+                            <>
+                              <div className="flex items-center gap-2 text-green-600 text-sm font-semibold">
+                                <Fingerprint className="w-5 h-5" />
+                                <span>{language === 'gu' ? 'બાયોમેટ્રિક લોક સક્રિય છે' : 'Biometrics registered'}</span>
+                              </div>
+                              <button
+                                onClick={removeBiometrics}
+                                className="px-4 py-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                              >
+                                {language === 'gu' ? 'દૂર કરો' : 'Remove'}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={registerBiometrics}
+                              className="px-4 py-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-2"
+                            >
+                              <Fingerprint className="w-4 h-4" />
+                              {language === 'gu' ? 'બાયોમેટ્રિક સેટઅપ કરો' : 'Register Biometric Credential'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
               </div>
             </div>
 

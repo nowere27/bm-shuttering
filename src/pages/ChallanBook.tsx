@@ -29,7 +29,7 @@ const emptyItems: ItemsData = {
 interface ChallanData {
   challanNumber: string;
   date: string;
-  createdAt: string;
+  createdAt?: string;
   clientNicName: string;
   clientFullName: string;
   site: string;

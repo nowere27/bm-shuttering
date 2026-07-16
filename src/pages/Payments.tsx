@@ -245,10 +245,68 @@ export default function Payments() {
     const handleDownloadBill = async (bill: BillRecord) => {
         const details = await fetchBillDetails(bill);
         if (details) {
-            setSelectedBill(details);
+            const dataUrl = await generateBillJPEG(bill.bill_number, details);
+            const link = document.createElement('a');
+            link.download = `Bill_${bill.bill_number}.jpg`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success("Bill downloaded successfully");
+        }
+    };
+
+    const handleShareBill = async (bill: BillRecord) => {
+        const toastId = toast.loading("Generating photo for WhatsApp...");
+        try {
+            const details = await fetchBillDetails(bill);
+            if (!details) {
+                toast.dismiss(toastId);
+                return;
+            }
+            
+            const dataUrl = await generateBillJPEG(bill.bill_number, details);
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `Bill_${bill.bill_number}.jpg`, { type: 'image/jpeg' });
+
+            toast.dismiss(toastId);
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: `Bill #${bill.bill_number}`,
+                        text: `બિલ નંબર: #${bill.bill_number}`
+                    });
+                    toast.success("Shared successfully");
+                    return;
+                } catch (shareError: any) {
+                    if (shareError.name === 'AbortError') return;
+                    console.warn("Share failed, falling back", shareError);
+                }
+            }
+
+            // Fallback download & redirect
+            const link = document.createElement('a');
+            link.download = `Bill_${bill.bill_number}.jpg`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            const phone = bill.client?.primary_phone_number || "";
+            const cleanPhone = phone.replace(/\D/g, "");
+            const finalPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+            
             setTimeout(() => {
-                generateBillJPEG(bill.bill_number);
-            }, 1000);
+                window.open(`https://api.whatsapp.com/send?phone=${finalPhone}&text=${encodeURIComponent("બિલ નીચે મોકલેલ છે:")}`, "_blank");
+            }, 500);
+
+            toast.success("Bill downloaded. Opening WhatsApp...");
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to share photo", { id: toastId });
         }
     };
 
@@ -384,7 +442,7 @@ export default function Payments() {
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pb-20">
-                            {filteredBills.map((bill, index) => (
+                             {filteredBills.map((bill, index) => (
                                 <BillCard
                                     key={bill.bill_number || `bill-${index}`}
                                     bill={bill}
@@ -393,6 +451,7 @@ export default function Payments() {
                                     onDownload={handleDownloadBill}
                                     onDelete={handleDeleteBill}
                                     onEdit={handleEditBill}
+                                    onShare={handleShareBill}
                                 />
                             ))}
                         </div>
@@ -421,10 +480,20 @@ export default function Payments() {
                             </h3>
                             <div className="flex gap-2 shrink-0">
                                 <button
-                                    onClick={() => {
-                                        setTimeout(() => {
-                                            generateBillJPEG(selectedBill.billDetails.billNumber);
-                                        }, 500);
+                                    onClick={async () => {
+                                        try {
+                                            const dataUrl = await generateBillJPEG(selectedBill.billDetails.billNumber, selectedBill);
+                                            const link = document.createElement('a');
+                                            link.download = `Bill_${selectedBill.billDetails.billNumber}.jpg`;
+                                            link.href = dataUrl;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            toast.success("Bill downloaded successfully");
+                                        } catch (e) {
+                                            console.error(e);
+                                            toast.error("Failed to download");
+                                        }
                                     }}
                                     className="p-2 text-green-600 hover:bg-green-50 rounded-lg flex items-center gap-1"
                                 >
