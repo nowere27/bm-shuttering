@@ -181,7 +181,7 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialData, onSubmit, onCancel
         {plateSizes.length > 0 && (
           <div className="pt-3 border-t border-gray-200 space-y-4">
             <h4 className="block text-sm font-bold text-gray-800">
-              કસ્ટમ રોજનું ભાડું (Custom Daily Rents)
+              {t('customDailyRents')}
             </h4>
             
             {Object.entries(groupedSizes).map(([category, sizes]) => {
@@ -200,12 +200,12 @@ const ClientForm: React.FC<ClientFormProps> = ({ initialData, onSubmit, onCancel
                       return (
                         <div key={size.id}>
                           <label className="block mb-1 text-xs font-semibold text-gray-600">
-                            {size.name} ભાડું
+                            {size.name} {t('rate') || 'Rate'}
                           </label>
                           <input
                             type="number"
                             value={currentRent}
-                            placeholder={`${formData.daily_rent_price ?? 1} (Default)`}
+                            placeholder={`${formData.daily_rent_price ?? 1.5} (${t('defaultWord')})`}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
                               const nextRents = { ...(formData.jack_rents || {}) };

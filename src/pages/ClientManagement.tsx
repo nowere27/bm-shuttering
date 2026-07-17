@@ -586,7 +586,7 @@ const ClientManagement: React.FC = () => {
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 sm:text-base lg:text-xl">{t('clientList')}</h3>
                 <p className="text-[9px] sm:text-[10px] lg:text-sm text-gray-500 leading-tight">
-                  {clients.length} client{clients.length !== 1 ? 's' : ''}
+                  {clients.length} {t('clientsWord') || 'clients'}
                 </p>
               </div>
             </div>

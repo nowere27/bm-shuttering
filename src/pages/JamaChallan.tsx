@@ -146,7 +146,7 @@ const ClientSelectionStep: React.FC<ClientSelectionStepProps> = ({
       {searchQuery && (
         <div className="px-3 py-1.5 sm:px-4 sm:py-2 border border-green-200 rounded-lg bg-green-50">
           <p className="text-[10px] sm:text-xs lg:text-sm text-green-700">
-            Found <span className="font-semibold">{filteredClients.length}</span> client{filteredClients.length !== 1 ? 's' : ''}
+            {t('clientsFound')}: <span className="font-semibold">{filteredClients.length}</span>
           </p>
         </div>
       )}
@@ -158,16 +158,16 @@ const ClientSelectionStep: React.FC<ClientSelectionStepProps> = ({
           <div className="inline-flex items-center justify-center w-12 h-12 mb-3 bg-gray-100 rounded-full sm:w-14 sm:h-14 sm:mb-4 lg:w-16 lg:h-16">
             <User className="w-6 h-6 text-gray-400 sm:w-7 sm:h-7 lg:w-8 lg:h-8" />
           </div>
-          <h3 className="mb-2 text-sm font-semibold text-gray-900 sm:text-base lg:text-lg">No clients found</h3>
+          <h3 className="mb-2 text-sm font-semibold text-gray-900 sm:text-base lg:text-lg">{t('noClientsFound')}</h3>
           <p className="mb-3 text-[10px] sm:text-xs lg:text-sm text-gray-500 sm:mb-4">
-            {searchQuery ? 'Try adjusting your search' : 'No clients available'}
+            {searchQuery ? t('tryAdjustingSearch') : t('noClientsYet')}
           </p>
           {searchQuery && (
             <button
               onClick={() => onSearchChange('')}
               className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-green-600 transition-colors rounded-lg hover:text-green-700 hover:bg-green-50 touch-manipulation active:scale-95"
             >
-              Clear search
+              {t('clearSearch')}
             </button>
           )}
         </div>
@@ -829,7 +829,7 @@ const JamaChallan: React.FC = () => {
 
 
   const handleQuickAddClient = async (clientData: ClientFormData) => {
-    const loadingToast = toast.loading('Creating client...');
+    const loadingToast = toast.loading(t('creatingClient'));
 
     // Check for duplicate sort name
     const { data: existingClient } = await supabase
@@ -938,7 +938,7 @@ const JamaChallan: React.FC = () => {
     }
 
 
-    const loadingToast = toast.loading('Creating challan...');
+    const loadingToast = toast.loading(t('creatingChallan'));
 
 
     try {

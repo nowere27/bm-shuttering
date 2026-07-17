@@ -239,6 +239,123 @@ export function buildTransactionLedger(entries: ChallanEntry[]): LedgerEntry[] {
   return ledger;
 }
 
+export function calculateBillingPeriodsFIFO(
+  entries: ChallanEntry[],
+  billDate: string,
+  dailyRate: number
+): BillingPeriodResult {
+  const periods: BillingPeriod[] = [];
+  let totalRent = 0;
+
+  // Filter entries to strictly exclude anything after the bill date
+  const filteredEntries = entries.filter(entry => entry.date <= billDate);
+
+  // Group into deliveries (udhar) and returns (jama)
+  const udhars = filteredEntries
+    .filter(e => e.type === 'udhar')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const jamas = filteredEntries
+    .filter(e => e.type === 'jama')
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Outstanding deliveries queue
+  const outstandingDeliveries = udhars.map(u => ({
+    date: u.date,
+    remainingQty: u.plateCount,
+    challanNumber: u.challanNumber
+  }));
+
+  // Match returns (jamas)
+  jamas.forEach(jama => {
+    let returnQty = jama.plateCount;
+    const jamaDate = jama.date;
+
+    for (let i = 0; i < outstandingDeliveries.length; i++) {
+      const delivery = outstandingDeliveries[i];
+      if (delivery.remainingQty <= 0) continue;
+      if (new Date(delivery.date).getTime() > new Date(jamaDate).getTime()) {
+        // Cannot match returns to deliveries that happen in the future
+        break;
+      }
+
+      const matchQty = Math.min(returnQty, delivery.remainingQty);
+      if (matchQty > 0) {
+        const startDate = delivery.date;
+        const endDate = jamaDate;
+
+        // Calculate days inclusive (Standard/Inclusive)
+        const days = differenceInDays(parseISO(endDate), parseISO(startDate)) + 1;
+
+        // Rent calculation
+        const rateInPaise = Math.round(dailyRate * 100);
+        const rentInPaise = matchQty * days * rateInPaise;
+        const rent = Math.round(rentInPaise) / 100;
+
+        periods.push({
+          startDate,
+          endDate,
+          plateCount: matchQty,
+          days,
+          rent,
+          causeType: 'jama',
+          challanNumber: jama.challanNumber,
+          txnQty: matchQty,
+          jamaQty: matchQty,
+          jamaDetails: [{ challanNumber: jama.challanNumber, qty: matchQty }]
+        });
+
+        totalRent += rent;
+        returnQty -= matchQty;
+        delivery.remainingQty -= matchQty;
+
+        if (returnQty === 0) break;
+      }
+    }
+  });
+
+  // Remaining outstanding deliveries at the end of the bill period
+  outstandingDeliveries.forEach(delivery => {
+    if (delivery.remainingQty > 0) {
+      const startDate = delivery.date;
+      const endDate = billDate;
+
+      // Calculate days inclusive
+      const days = differenceInDays(parseISO(endDate), parseISO(startDate)) + 1;
+
+      // Rent calculation
+      const rateInPaise = Math.round(dailyRate * 100);
+      const rentInPaise = delivery.remainingQty * days * rateInPaise;
+      const rent = Math.round(rentInPaise) / 100;
+
+      periods.push({
+        startDate,
+        endDate,
+        plateCount: delivery.remainingQty,
+        days,
+        rent,
+        causeType: 'udhar',
+        challanNumber: delivery.challanNumber,
+        txnQty: delivery.remainingQty,
+        udharQty: delivery.remainingQty,
+        udharDetails: [{ challanNumber: delivery.challanNumber, qty: delivery.remainingQty }]
+      });
+
+      totalRent += rent;
+    }
+  });
+
+  // Sort periods by endDate ascending
+  periods.sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+
+  return {
+    entries: filteredEntries,
+    ledger: [],
+    periods,
+    totalRent: Math.round(totalRent * 100) / 100
+  };
+}
+
 export function calculateBillingPeriods(
   entries: ChallanEntry[],
   billDate: string,
@@ -582,7 +699,9 @@ export function calculateBill(
       });
 
       if (shuttEntries.length > 0) {
-        const shuttResult = calculateBillingPeriods(shuttEntries, billDate, dailyRate);
+        const shuttResult = jamaFirst
+          ? calculateBillingPeriodsFIFO(shuttEntries, billDate, dailyRate)
+          : calculateBillingPeriods(shuttEntries, billDate, dailyRate);
         shuttResult.periods.forEach(p => {
           periods.push({ ...p, rate: dailyRate });
           // No sizeId/sizeName — these are combined shuttering
@@ -595,7 +714,9 @@ export function calculateBill(
       const rate = jackRents[ps.id] as number;
       const sizeEntries = buildSizeEntries(ps.id);
       if (sizeEntries.length > 0) {
-        const sizeResult = calculateBillingPeriods(sizeEntries, billDate, rate);
+        const sizeResult = jamaFirst
+          ? calculateBillingPeriodsFIFO(sizeEntries, billDate, rate)
+          : calculateBillingPeriods(sizeEntries, billDate, rate);
         sizeResult.periods.forEach(p => {
           periods.push({
             ...p,
@@ -608,17 +729,24 @@ export function calculateBill(
     });
   } else {
     // No plateSizes info — fall back to fully combined global calc
-    const globalBillingPeriods = calculateBillingPeriods(entries, billDate, dailyRate);
+    const globalBillingPeriods = jamaFirst
+      ? calculateBillingPeriodsFIFO(entries, billDate, dailyRate)
+      : calculateBillingPeriods(entries, billDate, dailyRate);
     periods = globalBillingPeriods.periods.map(p => ({ ...p, rate: dailyRate }));
   }
 
-  // Sort all periods: shuttering (no sizeId) first, then jack by sizeId, then by startDate
+  // Sort all periods: shuttering (no sizeId) first, then jack by sizeId, then by startDate/endDate
   periods.sort((a, b) => {
     const aIsJack = a.sizeId !== undefined ? 1 : 0;
     const bIsJack = b.sizeId !== undefined ? 1 : 0;
     if (aIsJack !== bIsJack) return aIsJack - bIsJack;
     if (a.sizeId !== b.sizeId) return (a.sizeId || 0) - (b.sizeId || 0);
-    return a.startDate.localeCompare(b.startDate);
+
+    if (jamaFirst) {
+      return new Date(a.endDate).getTime() - new Date(b.endDate).getTime();
+    } else {
+      return a.startDate.localeCompare(b.startDate);
+    }
   });
 
   // If fromDate is provided, filter and clamp periods

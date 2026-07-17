@@ -26,6 +26,10 @@ const Settings: React.FC = () => {
   const [hasBiometrics, setHasBiometrics] = React.useState(false);
   const [isBiometricRegistered, setIsBiometricRegistered] = React.useState(() => !!localStorage.getItem('security_lock_cred_id'));
 
+  const [showAuthModal, setShowAuthModal] = React.useState(false);
+  const [authPin, setAuthPin] = React.useState('');
+  const [pendingToggle, setPendingToggle] = React.useState<boolean | null>(null);
+
   React.useEffect(() => {
     if (window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
       PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
@@ -33,6 +37,104 @@ const Settings: React.FC = () => {
         .catch(err => console.error(err));
     }
   }, []);
+
+  const handleAuthBiometric = async () => {
+    try {
+      if (!window.PublicKeyCredential) return;
+      const savedCredIdHex = localStorage.getItem('security_lock_cred_id');
+      if (!savedCredIdHex) return;
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const credIdBuffer = new Uint8Array(
+        savedCredIdHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+      );
+
+      const options: CredentialRequestOptions = {
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          allowCredentials: [{ type: 'public-key', id: credIdBuffer }],
+          userVerification: 'required',
+        },
+      };
+
+      const assertion = await navigator.credentials.get(options);
+      if (assertion && pendingToggle !== null) {
+        setSecurityEnabled(pendingToggle);
+        localStorage.setItem('security_lock_enabled', String(pendingToggle));
+        setShowAuthModal(false);
+        setPendingToggle(null);
+        toast.success(language === 'gu' ? "પ્રમાણીકરણ સફળ" : "Authentication Successful!");
+      }
+    } catch (err: any) {
+      console.warn(err);
+      if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+        toast.error(language === 'gu' ? "વેરિફિકેશન નિષ્ફળ" : "Biometric Verification Failed");
+      }
+    }
+  };
+
+  const handleAuthPinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const savedPin = localStorage.getItem('security_lock_pin');
+    if (authPin === savedPin && pendingToggle !== null) {
+      setSecurityEnabled(pendingToggle);
+      localStorage.setItem('security_lock_enabled', String(pendingToggle));
+      setShowAuthModal(false);
+      setPendingToggle(null);
+      setAuthPin('');
+      toast.success(language === 'gu' ? "પ્રમાણીકરણ સફળ" : "Authentication Successful!");
+    } else {
+      toast.error(language === 'gu' ? "ખોટો પિન!" : "Incorrect PIN!");
+      setAuthPin('');
+    }
+  };
+
+  const handleToggleSecurity = () => {
+    const hasExistingPin = localStorage.getItem('security_lock_pin');
+    const targetState = !securityEnabled;
+    
+    if (hasExistingPin) {
+      setPendingToggle(targetState);
+      setShowAuthModal(true);
+      setAuthPin('');
+      // Auto-trigger biometric if registered
+      if (isBiometricRegistered) {
+        setTimeout(() => {
+          const challenge = new Uint8Array(32);
+          window.crypto.getRandomValues(challenge);
+          const savedCredIdHex = localStorage.getItem('security_lock_cred_id');
+          if (savedCredIdHex) {
+            const credIdBuffer = new Uint8Array(
+              savedCredIdHex.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
+            );
+            navigator.credentials.get({
+              publicKey: {
+                challenge,
+                timeout: 60000,
+                allowCredentials: [{ type: 'public-key', id: credIdBuffer }],
+                userVerification: 'required',
+              }
+            }).then(assertion => {
+              if (assertion) {
+                setSecurityEnabled(targetState);
+                localStorage.setItem('security_lock_enabled', String(targetState));
+                setShowAuthModal(false);
+                setPendingToggle(null);
+                toast.success(language === 'gu' ? "પ્રમાણીકરણ સફળ" : "Authentication Successful!");
+              }
+            }).catch(err => {
+              console.warn(err);
+            });
+          }
+        }, 300);
+      }
+    } else {
+      setSecurityEnabled(targetState);
+      localStorage.setItem('security_lock_enabled', String(targetState));
+    }
+  };
 
   const handleSave = () => {
     if (securityEnabled) {
@@ -53,8 +155,8 @@ const Settings: React.FC = () => {
         return;
       }
 
-      // Generate a compulsory random 4-digit PIN for backup
-      const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+      // Use existing PIN if it is a valid 4-digit number, otherwise generate a random one
+      const generatedPin = pin && pin.length === 4 ? pin : Math.floor(1000 + Math.random() * 9000).toString();
 
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
@@ -91,16 +193,16 @@ const Settings: React.FC = () => {
         // Convert arrayBuffer to hex string to store in localStorage
         const rawId = new Uint8Array(credential.rawId);
         const hexId = Array.from(rawId).map(b => b.toString(16).padStart(2, '0')).join('');
-        
+
         localStorage.setItem('security_lock_cred_id', hexId);
         localStorage.setItem('security_lock_pin', generatedPin);
-        
+
         setPin(generatedPin);
         setIsBiometricRegistered(true);
-        
+
         toast.success(
-          language === 'gu' 
-            ? `બાયોમેટ્રિક સેટ થયું! તમારો બેકઅપ પિન: ${generatedPin}` 
+          language === 'gu'
+            ? `બાયોમેટ્રિક સેટ થયું! તમારો બેકઅપ પિન: ${generatedPin}`
             : `Biometrics set! Your backup PIN: ${generatedPin}`,
           { duration: 6000 }
         );
@@ -126,7 +228,7 @@ const Settings: React.FC = () => {
 
       <main className="flex-1 w-full px-4 py-8 pb-24 sm:px-6 lg:px-8 lg:ml-64 transition-all duration-200">
         <div className="max-w-4xl mx-auto space-y-6">
-          
+
           {/* Header */}
           <div className="flex items-center gap-3 border-b border-gray-200 pb-4">
             <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl">
@@ -153,15 +255,14 @@ const Settings: React.FC = () => {
                     {t('dateSortingMethod')}
                   </label>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    
+
                     {/* Standard Method Option */}
                     <button
                       onClick={() => setDateSortingMethod('standard')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        dateSortingMethod === 'standard'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${dateSortingMethod === 'standard'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -179,11 +280,10 @@ const Settings: React.FC = () => {
                     {/* Jama First Option */}
                     <button
                       onClick={() => setDateSortingMethod('jamaFirst')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        dateSortingMethod === 'jamaFirst'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${dateSortingMethod === 'jamaFirst'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -217,15 +317,14 @@ const Settings: React.FC = () => {
                     {t('defaultLedgerDownloadFormat')}
                   </label>
                   <div className="grid gap-4 sm:grid-cols-3">
-                    
+
                     {/* Detailed Option */}
                     <button
                       onClick={() => setDefaultLedgerDownloadFormat('detailed')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        defaultLedgerDownloadFormat === 'detailed'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${defaultLedgerDownloadFormat === 'detailed'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -243,11 +342,10 @@ const Settings: React.FC = () => {
                     {/* Simple Option */}
                     <button
                       onClick={() => setDefaultLedgerDownloadFormat('simple')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        defaultLedgerDownloadFormat === 'simple'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${defaultLedgerDownloadFormat === 'simple'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -265,11 +363,10 @@ const Settings: React.FC = () => {
                     {/* Split Option */}
                     <button
                       onClick={() => setDefaultLedgerDownloadFormat('split')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        defaultLedgerDownloadFormat === 'split'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${defaultLedgerDownloadFormat === 'split'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -320,11 +417,10 @@ const Settings: React.FC = () => {
                       <button
                         key={preset.size}
                         onClick={() => setFontSize(preset.size)}
-                        className={`flex flex-col items-center py-3 px-2 rounded-xl border transition-all ${
-                          fontSize === preset.size
+                        className={`flex flex-col items-center py-3 px-2 rounded-xl border transition-all ${fontSize === preset.size
                             ? 'border-blue-600 bg-blue-50 ring-1 ring-blue-500'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40'
-                        }`}
+                          }`}
                       >
                         <span
                           style={{ fontSize: `${preset.size}px`, lineHeight: 1 }}
@@ -375,9 +471,8 @@ const Settings: React.FC = () => {
                       <span
                         key={s}
                         onClick={() => setFontSize(s)}
-                        className={`text-[10px] cursor-pointer select-none transition-colors ${
-                          fontSize === s ? 'text-blue-600 font-bold' : 'text-gray-400 hover:text-gray-600'
-                        }`}
+                        className={`text-[10px] cursor-pointer select-none transition-colors ${fontSize === s ? 'text-blue-600 font-bold' : 'text-gray-400 hover:text-gray-600'
+                          }`}
                       >
                         {s}
                       </span>
@@ -414,24 +509,22 @@ const Settings: React.FC = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     {t('selectLanguage')}
                   </label>
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 w-full">
                     <button
                       onClick={() => setLanguage('gu')}
-                      className={`px-6 py-2.5 rounded-lg text-sm font-semibold border transition-all ${
-                        language === 'gu'
+                      className={`flex-1 px-6 py-2.5 rounded-lg text-sm font-semibold border transition-all ${language === 'gu'
                           ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       ગુજરાતી
                     </button>
                     <button
                       onClick={() => setLanguage('en')}
-                      className={`px-6 py-2.5 rounded-lg text-sm font-semibold border transition-all ${
-                        language === 'en'
+                      className={`flex-1 px-6 py-2.5 rounded-lg text-sm font-semibold border transition-all ${language === 'en'
                           ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
                           : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       English
                     </button>
@@ -448,29 +541,28 @@ const Settings: React.FC = () => {
                   {t('extraFieldsSettings') || 'Feature Visibility Settings'}
                 </h3>
               </div>
-              <div className="p-4 sm:p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900">
+              <div className="p-4 sm:p-6">
+                <button
+                  onClick={() => setShowDriverDetails(!showDriverDetails)}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${showDriverDetails
+                      ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                >
+                  <div className="pr-4">
+                    <span className="font-bold text-sm sm:text-base text-gray-900 block mb-1">
                       {t('enableDriverMobileVehicle') || 'Enable Driver Mobile Number & Vehicle'}
-                    </label>
-                    <p className="text-xs text-gray-500">
+                    </span>
+                    <p className="text-xs text-gray-500 leading-relaxed">
                       {t('enableDriverMobileVehicleDesc') || 'Show fields for Driver Mobile and Vehicle details during Jama and Udhar challan creation.'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setShowDriverDetails(!showDriverDetails)}
-                    className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-inner ${
-                      showDriverDetails ? 'bg-gradient-to-r from-blue-500 to-indigo-600' : 'bg-gray-300'
-                    }`}
-                  >
+                  <div className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out shadow-inner ${showDriverDetails ? 'bg-blue-600' : 'bg-gray-300'}`}>
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                        showDriverDetails ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${showDriverDetails ? 'translate-x-5' : 'translate-x-0'}`}
                     />
-                  </button>
-                </div>
+                  </div>
+                </button>
               </div>
             </div>
 
@@ -494,11 +586,10 @@ const Settings: React.FC = () => {
                     {/* Share as Image */}
                     <button
                       onClick={() => setShareBillMode('image')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        shareBillMode === 'image'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${shareBillMode === 'image'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -513,11 +604,10 @@ const Settings: React.FC = () => {
                     {/* Share as Text */}
                     <button
                       onClick={() => setShareBillMode('text')}
-                      className={`relative p-4 rounded-xl border text-left transition-all ${
-                        shareBillMode === 'text'
+                      className={`relative p-4 rounded-xl border text-left transition-all ${shareBillMode === 'text'
                           ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
                           : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-bold text-sm sm:text-base text-gray-900">
@@ -542,40 +632,39 @@ const Settings: React.FC = () => {
                 </h3>
               </div>
               <div className="p-4 sm:p-6 space-y-6">
-                
+
                 {/* Enable Lock Switch */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900">
+                <button
+                  onClick={handleToggleSecurity}
+                  className={`w-full flex items-center justify-between p-4 rounded-xl border text-left transition-all ${securityEnabled
+                      ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                >
+                  <div className="pr-4">
+                    <span className="font-bold text-sm sm:text-base text-gray-900 block mb-1">
                       {language === 'gu' ? 'એપ લોક ચાલુ કરો' : 'Enable Application Lock'}
-                    </label>
-                    <p className="text-xs text-gray-500">
+                    </span>
+                    <p className="text-xs text-gray-500 leading-relaxed">
                       {language === 'gu' ? 'મોબાઇલ PWA શરૂ થવા પર પિન અથવા ફિંગરપ્રિન્ટ પૂછશે.' : 'Require PIN or Biometrics authentication on app startup.'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setSecurityEnabled(!securityEnabled)}
-                    className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-inner ${
-                      securityEnabled ? 'bg-gradient-to-r from-blue-500 to-indigo-600' : 'bg-gray-300'
-                    }`}
-                  >
+                  <div className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out shadow-inner ${securityEnabled ? 'bg-blue-600' : 'bg-gray-300'}`}>
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${
-                        securityEnabled ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${securityEnabled ? 'translate-x-5' : 'translate-x-0'}`}
                     />
-                  </button>
-                </div>
+                  </div>
+                </button>
 
                 {securityEnabled && (
                   <div className="space-y-4 pt-4 border-t border-gray-100">
-                    
+
                     {/* PIN Input */}
                     <div className="max-w-xs">
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center justify-between">
                         <span>{language === 'gu' ? '૪-અંકનો સુરક્ષા પિન' : '4-Digit Security PIN'}</span>
                         {isBiometricRegistered && (
-                          <span className="text-[10px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded">
+                          <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">
                             {language === 'gu' ? 'બાયોમેટ્રિક બેકઅપ પિન' : 'Biometric Backup PIN'}
                           </span>
                         )}
@@ -583,26 +672,21 @@ const Settings: React.FC = () => {
                       <div className="relative">
                         <Key className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
                         <input
-                          type={isBiometricRegistered ? "text" : "password"}
+                          type="password"
                           pattern="[0-9]*"
                           inputMode="numeric"
                           maxLength={4}
                           value={pin}
-                          disabled={isBiometricRegistered}
                           onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                          className={`w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center ${
-                            isBiometricRegistered ? 'bg-gray-105 font-bold cursor-not-allowed text-blue-600' : ''
-                          }`}
+                          className="w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center"
                           placeholder="••••"
                         />
                       </div>
-                      {isBiometricRegistered && (
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          {language === 'gu' 
-                            ? 'બાયોમેટ્રિક સક્રિય હોવાને કારણે પિન આપોઆપ જનરેટ થયો છે.' 
-                            : 'This PIN is automatically generated for biometric backup recovery.'}
-                        </p>
-                      )}
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        {language === 'gu'
+                          ? 'બાયોમેટ્રિક કામ ન કરે અથવા ઉપલબ્ધ ન હોય ત્યારે અનલોક કરવા માટે કસ્ટમ પિન સેટ કરો.'
+                          : 'Set a custom backup PIN to use if biometrics is unavailable or fails.'}
+                      </p>
                     </div>
 
                     {/* Biometrics Setup */}
@@ -611,7 +695,7 @@ const Settings: React.FC = () => {
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                           {language === 'gu' ? 'બાયોમેટ્રિક લોક (ફિંગરપ્રિન્ટ / ફેસ આઈડી)' : 'Biometric Lock (Fingerprint / FaceID)'}
                         </label>
-                        
+
                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                           {isBiometricRegistered ? (
                             <>
@@ -621,7 +705,7 @@ const Settings: React.FC = () => {
                               </div>
                               <button
                                 onClick={removeBiometrics}
-                                className="px-4 py-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                                className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-center"
                               >
                                 {language === 'gu' ? 'દૂર કરો' : 'Remove'}
                               </button>
@@ -629,7 +713,7 @@ const Settings: React.FC = () => {
                           ) : (
                             <button
                               onClick={registerBiometrics}
-                              className="px-4 py-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center gap-2"
+                              className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                               <Fingerprint className="w-4 h-4" />
                               {language === 'gu' ? 'બાયોમેટ્રિક સેટઅપ કરો' : 'Register Biometric Credential'}
@@ -647,14 +731,83 @@ const Settings: React.FC = () => {
           </div>
 
           {/* Save Button Row */}
-          <div className="flex justify-end pt-4">
+          <div className="flex justify-end pt-4 pb-24 sm:pb-6">
             <button
               onClick={handleSave}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl shadow transition-all flex items-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2"
             >
-                  {t('saveConfiguration')}
+              {t('saveConfiguration')}
             </button>
           </div>
+
+          {/* Auth Verification Modal */}
+          {showAuthModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black bg-opacity-60 sm:p-4 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden p-6 animate-scale-in border border-gray-100">
+                <div className="flex flex-col items-center text-center">
+                  <div className="mb-4 p-3 bg-blue-50 text-blue-600 rounded-full animate-bounce">
+                    <Shield className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    {language === 'gu' ? 'સુરક્ષા ચકાસણી' : 'Security Verification'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-6">
+                    {language === 'gu' 
+                      ? 'સેટિંગ બદલવા માટે તમારો પિન અથવા બાયોમેટ્રિક દાખલ કરો.' 
+                      : 'Enter your PIN or use biometrics to verify it\'s you.'}
+                  </p>
+
+                  <form onSubmit={handleAuthPinSubmit} className="w-full space-y-4">
+                    <div className="relative max-w-[200px] mx-auto">
+                      <Key className="absolute w-5 h-5 text-gray-400 transform -translate-y-1/2 left-3 top-1/2" />
+                      <input
+                        type="password"
+                        pattern="[0-9]*"
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={authPin}
+                        onChange={(e) => setAuthPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        className="w-full py-2.5 pl-10 pr-4 text-gray-900 border border-gray-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none font-mono text-lg tracking-widest text-center"
+                        placeholder="••••"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAuthModal(false);
+                          setPendingToggle(null);
+                        }}
+                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                      >
+                        {language === 'gu' ? 'રદ કરો' : 'Cancel'}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={authPin.length !== 4}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-colors"
+                      >
+                        {language === 'gu' ? 'ચકાસો' : 'Verify'}
+                      </button>
+                    </div>
+
+                    {isBiometricRegistered && (
+                      <button
+                        type="button"
+                        onClick={handleAuthBiometric}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 rounded-xl transition-colors mt-2"
+                      >
+                        <Fingerprint className="w-4 h-4" />
+                        {language === 'gu' ? 'બાયોમેટ્રિક સ્કેન કરો' : 'Scan Biometrics'}
+                      </button>
+                    )}
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </main>

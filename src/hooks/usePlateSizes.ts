@@ -66,7 +66,8 @@ export const usePlateSizes = () => {
       const updates = orderedSizes.map((size, index) => ({
         id: size.id,
         name: size.name,
-        sort_order: index + 1
+        sort_order: index + 1,
+        category: size.category || 'shuttering'
       }));
 
       const { error } = await supabase

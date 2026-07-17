@@ -70,7 +70,7 @@ const BillCard: React.FC<BillCardProps> = ({ bill, t, onView, onDownload, onDele
                         )}
                         {(bill.due_payment || 0) > 0 && (
                             <div className="text-xs font-bold text-red-600">
-                                Due: ₹{(bill.due_payment || 0).toLocaleString("en-IN")}
+                                {t('due') || 'Due'}: ₹{(bill.due_payment || 0).toLocaleString("en-IN")}
                             </div>
                         )}
                         <div className="text-[10px] text-gray-500">
@@ -99,21 +99,21 @@ const BillCard: React.FC<BillCardProps> = ({ bill, t, onView, onDownload, onDele
                         className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded hover:bg-amber-100 transition-colors"
                     >
                         <Pencil className="w-3.5 h-3.5" />
-                        Edit
+                        {t('edit')}
                     </button>
                     <button
                         onClick={() => onView(bill)}
                         className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
                     >
                         <Eye className="w-3.5 h-3.5" />
-                        View
+                        {t('view')}
                     </button>
                     <button
                         onClick={() => onDownload(bill)}
                         className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium text-green-600 bg-green-50 rounded hover:bg-green-100 transition-colors"
                     >
                         <Download className="w-3.5 h-3.5" />
-                        PDF
+                        {t('download')}
                     </button>
                     <button
                         onClick={() => onShare(bill)}
@@ -123,7 +123,7 @@ const BillCard: React.FC<BillCardProps> = ({ bill, t, onView, onDownload, onDele
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.457L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.625 1.45 5.536 0 10.038-4.502 10.04-10.04.002-2.684-1.038-5.207-2.93-7.101C16.43 1.57 13.918.531 11.238.531 5.707.531 1.206 5.033 1.204 10.564c-.001 1.507.412 2.977 1.196 4.275L1.44 20.248l5.207-1.365-.001.271z" />
                         </svg>
-                        Share
+                        {t('share')}
                     </button>
                     <button
                         onClick={() => onDelete(bill)}

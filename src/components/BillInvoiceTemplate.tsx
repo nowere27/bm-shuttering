@@ -351,9 +351,7 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
 
               visibleCharges.forEach(charge => {
                 const hasSize = charge.size && charge.size !== 'All';
-                const effectiveRate = charge.rate || billDetails.dailyRent;
-                const isDifferentRate = effectiveRate !== billDetails.dailyRent;
-                const isJack = hasSize && isDifferentRate;
+                const isJack = hasSize;
 
                 // Group key is 'shuttering' or the specific jack sizeId
                 const key = isJack ? String(charge.sizeId || charge.size) : 'shuttering';
@@ -382,8 +380,7 @@ const BillInvoiceTemplate: React.FC<BillInvoiceProps> = ({
 
                 const hasSize = charge.size && charge.size !== 'All';
                 const effectiveRate = charge.rate || billDetails.dailyRent;
-                const isDifferentRate = effectiveRate !== billDetails.dailyRent;
-                const isJackRow = hasSize && isDifferentRate;
+                const isJackRow = hasSize;
 
                 const key = isJackRow ? String(charge.sizeId || charge.size) : 'shuttering';
                 

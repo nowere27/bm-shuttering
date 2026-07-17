@@ -275,7 +275,7 @@ const ChallanBook: React.FC = () => {
   });
 
   const handleDownloadJPEG = async (challan: ChallanData) => {
-    const loadingToast = toast.loading('Generating JPEG...');
+    const loadingToast = toast.loading(t('generatingJPEG'));
     try {
       const container = document.createElement('div');
       container.style.position = 'absolute';
@@ -320,7 +320,7 @@ const ChallanBook: React.FC = () => {
     );
     if (!confirmed) return;
 
-    const loadingToast = toast.loading('Deleting challan...');
+    const loadingToast = toast.loading(t('deletingChallan'));
     try {
       const rpc = activeTab === 'udhar' ? 'delete_udhar_challan_with_stock' : 'delete_jama_challan_with_stock';
       
@@ -650,18 +650,18 @@ const ChallanBook: React.FC = () => {
 
                     <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
                       {[
-                        { label: 'View',     icon: <Eye className="w-4 h-4 sm:w-5 sm:h-5" />,      cls: 'text-blue-600   hover:bg-blue-50',   action: () => handleViewDetails(challan) },
-                        { label: 'Edit',     icon: <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />, cls: 'text-yellow-600 hover:bg-yellow-50', action: () => handleEdit(challan) },
-                        { label: 'Download', icon: <Download className="w-4 h-4 sm:w-5 sm:h-5" />, cls: 'text-blue-600   hover:bg-blue-50',   action: () => handleDownloadJPEG(challan) },
-                        { label: 'Delete',   icon: <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />,   cls: 'text-red-600    hover:bg-red-50',    action: () => handleDelete(challan) },
-                      ].map(({ label, icon, cls, action }) => (
+                        { labelKey: 'view',     icon: <Eye className="w-4 h-4 sm:w-5 sm:h-5" />,      cls: 'text-blue-600   hover:bg-blue-50',   action: () => handleViewDetails(challan) },
+                        { labelKey: 'edit',     icon: <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />, cls: 'text-yellow-600 hover:bg-yellow-50', action: () => handleEdit(challan) },
+                        { labelKey: 'download', icon: <Download className="w-4 h-4 sm:w-5 sm:h-5" />, cls: 'text-blue-600   hover:bg-blue-50',   action: () => handleDownloadJPEG(challan) },
+                        { labelKey: 'delete',   icon: <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />,   cls: 'text-red-600    hover:bg-red-50',    action: () => handleDelete(challan) },
+                      ].map(({ labelKey, icon, cls, action }) => (
                         <button
-                          key={label}
+                          key={labelKey}
                           onClick={action}
                           className={`flex flex-col items-center justify-center gap-1 px-2 py-2 bg-white rounded-lg transition-colors touch-manipulation active:scale-95 ${cls}`}
                         >
                           {icon}
-                          <span className="text-[9px] sm:text-[10px] font-medium">{label}</span>
+                          <span className="text-[9px] sm:text-[10px] font-medium">{t(labelKey)}</span>
                         </button>
                       ))}
                     </div>
