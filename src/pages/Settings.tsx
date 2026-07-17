@@ -1,12 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useSettings } from '../contexts/SettingsContext';
-import { Settings as SettingsIcon, Globe, Layers, CheckCircle, Download, Type, Lock, Shield, Fingerprint, Key, Share2, CalendarClock } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Layers, CheckCircle, Download, Type, Lock, Shield, Fingerprint, Key, Share2, CalendarClock, LayoutGrid, ChevronRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { supabase } from '../utils/supabase';
 
 const Settings: React.FC = () => {
+  const navigate = useNavigate();
   const { t, language, setLanguage } = useLanguage();
   const {
     dateSortingMethod,
@@ -276,6 +278,29 @@ const Settings: React.FC = () => {
           </div>
 
           <div className="grid gap-6 md:grid-cols-1">
+            {/* Challan Export Design Card */}
+            <button
+              onClick={() => navigate('/settings/challan-designer')}
+              className="w-full text-left bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:border-blue-300 transition-colors"
+            >
+              <div className="p-4 sm:p-6 flex items-center gap-3">
+                <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl">
+                  <LayoutGrid className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 text-base sm:text-lg">
+                    {language === 'gu' ? 'ચલણ એક્સપોર્ટ ડિઝાઇન' : 'Challan Export Designs'}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+                    {language === 'gu'
+                      ? 'એક્સપોર્ટ થયેલ ચલણ કેવું દેખાય તે ડિઝાઇન કરો: બેકગ્રાઉન્ડ ટેમ્પલેટ સેટ કરો અને ડેટા ફીલ્ડ્સ તેના પર ગોઠવો.'
+                      : 'Design how exported challans look: set a background template and drag data fields onto it. Configure per item type.'}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </div>
+            </button>
+
             {/* Bill Calculation Settings Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">

@@ -21,6 +21,7 @@ const CreateBill = lazy(() => import('./pages/CreateBill'));
 const BillBook = lazy(() => import('./pages/BillBook'));
 const Payments = lazy(() => import('./pages/Payments'));
 const Settings = lazy(() => import('./pages/Settings'));
+const ChallanDesigner = lazy(() => import('./pages/ChallanDesigner'));
 
 const LoadingSpinner: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -94,6 +95,10 @@ function App() {
                   <Route
                     path="/settings"
                     element={<ProtectedRoute><Settings /></ProtectedRoute>}
+                  />
+                  <Route
+                    path="/settings/challan-designer"
+                    element={<ProtectedRoute><ChallanDesigner /></ProtectedRoute>}
                   />
                   <Route path="/billing">
                     <Route

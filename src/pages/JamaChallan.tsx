@@ -25,6 +25,7 @@ import ReceiptTemplate from '../components/ReceiptTemplate';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabase';
 import { generateJPEG } from '../utils/generateJPEG';
+import { tryExportChallanDesign } from '../utils/challanDesign/exportChallanDesign';
 import Navbar from '../components/Navbar';
 import toast, { Toaster } from 'react-hot-toast';
 import { fetchClientTransactions } from '../utils/challanFetching';
@@ -1019,15 +1020,40 @@ const JamaChallan: React.FC = () => {
 
       setTimeout(async () => {
         try {
-          await generateJPEG('jama', challanNumber, date, 2440, 1697);
-          toast.success('JPEG generated successfully');
+          // Prefer a tenant-configured design (multi-page PDF); fall back to the
+          // legacy hard-coded JPEG template when no matching design exists.
+          const formattedDate = new Date(date).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+          const exported = selectedClient
+            ? await tryExportChallanDesign({
+                challanType: 'jama',
+                challanNumber,
+                date: formattedDate,
+                plateSizes,
+                items,
+                clientName: selectedClient.client_name,
+                clientNicName: selectedClient.client_nic_name,
+                site: selectedClient.site,
+                phone: selectedClient.primary_phone_number,
+                driverName:
+                  driverName +
+                  (driverPhone || vehicleNumber ? ` (${driverPhone || '-'} / ${vehicleNumber || '-'})` : ''),
+              })
+            : false;
+          if (!exported) {
+            await generateJPEG('jama', challanNumber, date, 2440, 1697);
+          }
+          toast.success(exported ? 'Challan PDF generated' : 'JPEG generated successfully');
           // Add a delay before refreshing to ensure user sees the success message
           setTimeout(() => {
             window.location.reload();
           }, 1000);
         } catch (error) {
-          console.error('Error generating JPEG:', error);
-          toast.error('Failed to generate JPEG');
+          console.error('Error generating challan export:', error);
+          toast.error('Failed to generate challan export');
           // Refresh even if JPEG generation fails
           setTimeout(() => {
             window.location.reload();
