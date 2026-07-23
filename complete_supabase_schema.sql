@@ -298,6 +298,35 @@ CREATE POLICY "Authenticated users can delete jama_items"
   TO authenticated
   USING (true);
 
+-- Create stock table
+CREATE TABLE IF NOT EXISTS stock (
+  size integer PRIMARY KEY,
+  total_stock integer DEFAULT 0 NOT NULL CHECK (total_stock >= 0),
+  on_rent_stock integer DEFAULT 0 NOT NULL CHECK (on_rent_stock >= 0),
+  borrowed_stock integer DEFAULT 0 NOT NULL CHECK (borrowed_stock >= 0),
+  lost_stock integer DEFAULT 0 NOT NULL CHECK (lost_stock >= 0),
+  updated_at timestamp DEFAULT now()
+);
+
+-- Enable RLS for stock
+ALTER TABLE stock ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can view stock"
+  ON stock FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Authenticated users can update/insert stock"
+  ON stock FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY "Anon users can view stock"
+  ON stock FOR SELECT
+  TO anon
+  USING (true);
+
 -- ==========================================
 -- MIGRATION: 20251007090514_create_challan_crud_with_stock_functions.sql
 -- ==========================================
@@ -610,16 +639,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- MIGRATION: 20251107000001_add_bill_status.sql
 -- ==========================================
 
--- Add status column to bills table
-ALTER TABLE bills
-ADD COLUMN status VARCHAR(20) DEFAULT 'draft'
-CHECK (status IN ('draft', 'generated', 'cancelled'));
+-- Add status column to bills table if it exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'bills') THEN
+    ALTER TABLE bills
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'draft'
+    CHECK (status IN ('draft', 'generated', 'cancelled'));
 
--- Add comment for the status column
-COMMENT ON COLUMN bills.status IS 'Status of the bill: draft, generated, or cancelled';
+    COMMENT ON COLUMN bills.status IS 'Status of the bill: draft, generated, or cancelled';
 
--- Update existing bills to have a default status if any exist
-UPDATE bills SET status = 'generated' WHERE status IS NULL;
+    UPDATE bills SET status = 'generated' WHERE status IS NULL;
+  END IF;
+END $$;
 
 -- ==========================================
 -- MIGRATION: 20251107000002_fix_bills_schema.sql
@@ -1547,7 +1579,18 @@ $$;
 
 
 -- NEW dynamic update_udhar_challan_with_stock
-DROP FUNCTION IF EXISTS update_udhar_challan_with_stock(TEXT, UUID, TEXT, TEXT, DATE, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT);
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT oid::regprocedure AS prod
+    FROM pg_proc 
+    WHERE proname = 'update_udhar_challan_with_stock'
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.prod;
+  END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_udhar_challan_with_stock(
   p_challan_number TEXT,
@@ -1614,7 +1657,18 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- NEW dynamic update_jama_challan_with_stock
-DROP FUNCTION IF EXISTS update_jama_challan_with_stock(TEXT, UUID, TEXT, TEXT, DATE, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, TEXT);
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT oid::regprocedure AS prod
+    FROM pg_proc 
+    WHERE proname = 'update_jama_challan_with_stock'
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.prod;
+  END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION update_jama_challan_with_stock(
   p_challan_number TEXT,
@@ -1968,6 +2022,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION adjust_lost_stock(INTEGER, INTEGER) TO anon, authenticated;
 
 -- 3. Update Jama Challan with stock adjustments (lost-aware)
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT oid::regprocedure AS prod
+    FROM pg_proc 
+    WHERE proname = 'update_jama_challan_with_stock'
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.prod;
+  END LOOP;
+END $$;
+
+
 CREATE OR REPLACE FUNCTION update_jama_challan_with_stock(
   p_challan_number TEXT,
   p_client_id UUID,
@@ -2123,6 +2191,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION adjust_damaged_stock(INTEGER, INTEGER) TO anon, authenticated;
 
 -- 4. Update Jama Challan with stock adjustments (lost + damaged aware)
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN 
+    SELECT oid::regprocedure AS prod
+    FROM pg_proc 
+    WHERE proname = 'update_jama_challan_with_stock'
+  LOOP
+    EXECUTE 'DROP FUNCTION ' || r.prod;
+  END LOOP;
+END $$;
+
+
 CREATE OR REPLACE FUNCTION update_jama_challan_with_stock(
   p_challan_number TEXT,
   p_client_id UUID,

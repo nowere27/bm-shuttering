@@ -559,6 +559,9 @@ const ChallanDesigner: React.FC = () => {
           <div className="text-center">
             <h2 className="text-xl font-bold text-slate-100">{gt('ચલણ ડિઝાઇન સ્ટુડિયો લૉક છે', 'Challan Design Studio is Locked')}</h2>
             <p className="text-sm text-slate-400 mt-1">{gt('આગળ વધવા માટે પાસવર્ડ દાખલ કરો', 'Enter the password to access the studio')}</p>
+            <p className="text-xs text-amber-400 font-semibold mt-2.5 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg inline-block">
+              {gt('તમે સબ્સ્ક્રાઇબ કરશો એટલે આ ઓપન થશે.', 'It will open when you subscribe.')}
+            </p>
           </div>
           <form onSubmit={handleUnlock} className="w-full space-y-4">
             <input
