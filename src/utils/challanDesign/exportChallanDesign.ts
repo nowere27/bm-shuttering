@@ -29,6 +29,8 @@ export interface ExportChallanParams {
   site: string;
   phone: string;
   driverName?: string;
+  driverPhone?: string;
+  vehicleNumber?: string;
   designId?: string; // optional override; falls back to the category default
 }
 
@@ -55,6 +57,8 @@ export async function tryExportChallanDesign(p: ExportChallanParams): Promise<bo
       site: p.site,
       phone: p.phone,
       driverName: p.driverName,
+      driverPhone: p.driverPhone,
+      vehicleNumber: p.vehicleNumber,
     },
   });
 

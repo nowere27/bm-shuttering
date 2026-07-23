@@ -17,7 +17,9 @@ export const FIELD_KEYS: FieldKeyDef[] = [
   { key: 'clientNicName', label: 'Client Short Name', labelGu: 'ટૂંકું નામ' },
   { key: 'site', label: 'Site', labelGu: 'સાઇટ' },
   { key: 'phone', label: 'Phone', labelGu: 'ફોન' },
-  { key: 'driverName', label: 'Driver / Vehicle', labelGu: 'ડ્રાઈવર / વાહન' },
+  { key: 'driverName', label: 'Driver Name', labelGu: 'ડ્રાઈવર નામ' },
+  { key: 'driverPhone', label: 'Driver Phone', labelGu: 'ડ્રાઈવર ફોન' },
+  { key: 'vehicleNumber', label: 'Vehicle Number', labelGu: 'ગાડી નંબર' },
   { key: 'grandTotal', label: 'Grand Total', labelGu: 'કુલ સરવાળો' },
   { key: 'mainNote', label: 'Main Note', labelGu: 'મુખ્ય નોંધ' },
   { key: 'pageNumber', label: 'Page Number', labelGu: 'પાનું નં.' },
@@ -70,6 +72,8 @@ export function resolveFieldText(
     case 'site': return input.site ?? '';
     case 'phone': return input.phone ?? '';
     case 'driverName': return input.driverName ?? '';
+    case 'driverPhone': return input.driverPhone ?? '';
+    case 'vehicleNumber': return input.vehicleNumber ?? '';
     case 'grandTotal': return input.grandTotal ? String(input.grandTotal) : '';
     case 'mainNote': return input.mainNote ?? '';
     case 'pageNumber': return String(ctx.pageNumber);

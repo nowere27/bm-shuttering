@@ -1112,9 +1112,9 @@ const JamaChallan: React.FC = () => {
                 clientNicName: selectedClient.client_nic_name,
                 site: selectedClient.site,
                 phone: selectedClient.primary_phone_number,
-                driverName:
-                  driverName +
-                  (driverPhone || vehicleNumber ? ` (${driverPhone || '-'} / ${vehicleNumber || '-'})` : ''),
+                driverName,
+                driverPhone,
+                vehicleNumber,
               })
             : false;
           if (!exported) {

@@ -965,9 +965,9 @@ const UdharChallan: React.FC = () => {
               clientNicName: client.client_nic_name,
               site: alternativeSite || client.site,
               phone: secondaryPhone || client.primary_phone_number,
-              driverName:
-                driverName +
-                (driverPhone || vehicleNumber ? ` (${driverPhone || '-'} / ${vehicleNumber || '-'})` : ''),
+              driverName,
+              driverPhone,
+              vehicleNumber,
             })
           : false;
         if (!exported) {

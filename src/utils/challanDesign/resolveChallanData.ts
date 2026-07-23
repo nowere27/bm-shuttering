@@ -13,6 +13,8 @@ export interface ChallanMeta {
   site: string;
   phone: string;
   driverName?: string;
+  driverPhone?: string;
+  vehicleNumber?: string;
 }
 
 interface BuildParams {
@@ -59,6 +61,8 @@ export function buildRenderInput({ design, plateSizes, items, meta }: BuildParam
     site: meta.site,
     phone: meta.phone,
     driverName: meta.driverName,
+    driverPhone: meta.driverPhone,
+    vehicleNumber: meta.vehicleNumber,
     mainNote: items.main_note,
     rows,
     grandTotal,

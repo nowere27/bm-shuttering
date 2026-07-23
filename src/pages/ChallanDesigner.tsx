@@ -22,8 +22,11 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Copy,
+  Clipboard,
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useLanguage } from '../contexts/LanguageContext';
 import DesignEditorCanvas, { Selection } from '../components/challanDesign/DesignEditorCanvas';
 import DesignStage from '../components/challanDesign/DesignStage';
 import {
@@ -117,7 +120,9 @@ function sampleInput(draft: Draft): ChallanRenderInput {
     clientNicName: 'ન-૧',
     site: 'સાઇટ ૧',
     phone: '9876543210',
-    driverName: 'ડ્રાઈવર',
+    driverName: 'રાકેશભાઈ ડ્રાઈવર',
+    driverPhone: '9988776655',
+    vehicleNumber: 'GJ-01-XX-1234',
     mainNote: 'નમૂનો નોંધ',
     rows,
     grandTotal: rows.reduce((s, r) => s + r.total, 0),
@@ -159,6 +164,8 @@ type ConfirmState = {
 
 const ChallanDesigner: React.FC = () => {
   const navigate = useNavigate();
+  const { language } = useLanguage();
+  const gt = (gu: string, en: string) => language === 'gu' ? gu : en;
   const [designs, setDesigns] = useState<ChallanDesign[]>([]);
   const [draft, setDraft] = useState<Draft>(newDraft());
   const [selection, setSelection] = useState<Selection>(null);
@@ -169,6 +176,8 @@ const ChallanDesigner: React.FC = () => {
   const [showSample, setShowSample] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
+  const [isLocked, setIsLocked] = useState(true);
+  const [passwordInput, setPasswordInput] = useState('');
 
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(600);
@@ -205,9 +214,9 @@ const ChallanDesigner: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error('Failed to load designs');
+      toast.error(gt('ડિઝાઇન લોડ કરવામાં નિષ્ફળતા', 'Failed to load designs'));
     }
-  }, []);
+  }, [gt]);
 
   useEffect(() => {
     refresh();
@@ -276,15 +285,14 @@ const ChallanDesigner: React.FC = () => {
     setMode('edit');
   };
 
-  // Runs the action immediately, or asks first when there are unsaved changes.
   const confirmIfDirty = (action: () => void) => {
     if (!isDirty) {
       action();
       return;
     }
     setConfirmState({
-      message: 'This design has unsaved changes. Discard them?',
-      confirmLabel: 'Discard changes',
+      message: gt('આ ડિઝાઇનમાં સાચવેલા વગરના ફેરફારો છે. શું તેને રદ કરવા છે?', 'This design has unsaved changes. Discard them?'),
+      confirmLabel: gt('ફેરફારો રદ કરો', 'Discard changes'),
       onConfirm: action,
     });
   };
@@ -300,10 +308,10 @@ const ChallanDesigner: React.FC = () => {
         background_width: bg.width,
         background_height: bg.height,
       }));
-      toast.success('Background uploaded');
+      toast.success(gt('બેકગ્રાઉન્ડ અપલોડ થઈ ગયું', 'Background uploaded'));
     } catch (err) {
       console.error(err);
-      toast.error('Upload failed');
+      toast.error(gt('અપલોડ નિષ્ફળ', 'Upload failed'));
     } finally {
       setUploading(false);
     }
@@ -371,7 +379,7 @@ const ChallanDesigner: React.FC = () => {
 
   const handleSave = async () => {
     if (!draft.name.trim()) {
-      toast.error('Give the design a name');
+      toast.error(gt('ડિઝાઇનને નામ આપો', 'Give the design a name'));
       return;
     }
     setSaving(true);
@@ -391,12 +399,60 @@ const ChallanDesigner: React.FC = () => {
       setDraft(next);
       savedSnapRef.current = snapshot(next);
       await refresh();
-      toast.success('Design saved');
+      toast.success(gt('ડિઝાઇન સાચવી લીધી છે', 'Design saved'));
     } catch (err) {
       console.error(err);
-      toast.error('Save failed');
+      toast.error(gt('સાચવવામાં નિષ્ફળતા', 'Save failed'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCopyLayout = () => {
+    try {
+      localStorage.setItem('challan_studio_clipboard_config', JSON.stringify(draft.config));
+      toast.success(gt('લેઆઉટ કોપી થઈ ગયો છે', 'Layout configuration copied to clipboard'));
+    } catch (err) {
+      console.error(err);
+      toast.error(gt('લેઆઉટ કોપી કરવામાં નિષ્ફળતા', 'Failed to copy layout'));
+    }
+  };
+
+  const handlePasteLayout = () => {
+    try {
+      const stored = localStorage.getItem('challan_studio_clipboard_config');
+      if (!stored) {
+        toast.error(gt('કોઈ લેઆઉટ મળ્યો નથી. પહેલા કોપી કરો.', 'No layout found. Copy a layout first.'));
+        return;
+      }
+      const config = JSON.parse(stored) as DesignConfig;
+      if (!config || !Array.isArray(config.fields)) {
+        toast.error(gt('ખોટો લેઆઉટ ડેટા', 'Invalid layout configuration'));
+        return;
+      }
+      // Re-generate IDs to avoid clashes
+      const updatedFields = config.fields.map(f => ({
+        ...f,
+        id: uid()
+      }));
+      const updatedColumns = config.band?.columns?.map(col => ({
+        ...col,
+        id: uid()
+      })) || [];
+
+      setConfig((c) => ({
+        ...c,
+        fields: updatedFields,
+        band: config.band ? {
+          ...config.band,
+          columns: updatedColumns
+        } : c.band
+      }));
+
+      toast.success(gt('લેઆઉટ પેસ્ટ થઈ ગયો છે', 'Layout configuration pasted'));
+    } catch (err) {
+      console.error(err);
+      toast.error(gt('લેઆઉટ પેસ્ટ કરવામાં નિષ્ફળતા', 'Failed to paste layout'));
     }
   };
 
@@ -406,17 +462,17 @@ const ChallanDesigner: React.FC = () => {
       return;
     }
     setConfirmState({
-      message: `Delete design "${draft.name}"? This cannot be undone.`,
-      confirmLabel: 'Delete design',
+      message: gt(`ડિઝાઇન "${draft.name}" ડીલીટ કરવી છે? આ પછી પાછું નહીં મેળવી શકાય.`, `Delete design "${draft.name}"? This cannot be undone.`),
+      confirmLabel: gt('ડીલીટ કરો', 'Delete design'),
       onConfirm: async () => {
         try {
           await deleteDesign(draft as ChallanDesign);
           await refresh();
           startNewRaw();
-          toast.success('Design deleted');
+          toast.success(gt('ડિઝાઇન ડીલીટ કરવામાં આવી છે', 'Design deleted'));
         } catch (err) {
           console.error(err);
-          toast.error('Delete failed');
+          toast.error(gt('ડીલીટ કરવામાં નિષ્ફળતા', 'Delete failed'));
         }
       },
     });
@@ -480,14 +536,66 @@ const ChallanDesigner: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   });
 
+  const handleUnlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === 'Margesh6400KhataKendra') {
+      setIsLocked(false);
+      toast.success(gt('અનલોક સફળ રહ્યું', 'Unlocked successfully'));
+    } else {
+      toast.error(gt('ખોટો પાસવર્ડ', 'Incorrect password'));
+    }
+  };
+
+  if (isLocked) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white">
+        <Toaster position="top-right" />
+        <div className="w-full max-w-md bg-slate-800/80 backdrop-blur-xl border border-slate-700/50 p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-6">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20 text-amber-400">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-slate-100">{gt('ચલણ ડિઝાઇન સ્ટુડિયો લૉક છે', 'Challan Design Studio is Locked')}</h2>
+            <p className="text-sm text-slate-400 mt-1">{gt('આગળ વધવા માટે પાસવર્ડ દાખલ કરો', 'Enter the password to access the studio')}</p>
+          </div>
+          <form onSubmit={handleUnlock} className="w-full space-y-4">
+            <input
+              type="password"
+              placeholder={gt('પાસવર્ડ દાખલ કરો', 'Enter password')}
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-950 border border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-slate-100 placeholder-slate-500 text-center text-lg font-mono"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-bold rounded-xl hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20 active:scale-95"
+            >
+              {gt('અનલોક કરો', 'Unlock')}
+            </button>
+          </form>
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            {gt('પાછા જાઓ', 'Go back')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const previewPages = mode === 'preview' ? paginate(draft.config, sampleInput(draft)) : [];
   const safePreviewPage = Math.min(previewPage, Math.max(0, previewPages.length - 1));
 
   const steps = [
-    { label: '1. Background', done: !!draft.background_url },
-    { label: '2. Place fields', done: draft.config.fields.length > 0 },
-    { label: '3. Item rows', done: draft.config.band.enabled && draft.config.band.columns.length > 0 },
-    { label: '4. Save', done: !!draft.id && !isDirty },
+    { label: gt('૧. બેકગ્રાઉન્ડ', '1. Background'), done: !!draft.background_url },
+    { label: gt('૨. ફીલ્ડ ગોઠવો', '2. Place fields'), done: draft.config.fields.length > 0 },
+    { label: gt('૩. આઈટમ લાઈનો', '3. Item rows'), done: draft.config.band.enabled && draft.config.band.columns.length > 0 },
+    { label: gt('૪. સાચવો', '4. Save'), done: !!draft.id && !isDirty },
   ];
   const currentStep = steps.findIndex((s) => !s.done);
 
@@ -508,7 +616,7 @@ const ChallanDesigner: React.FC = () => {
                 onClick={() => setConfirmState(null)}
                 className="px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                Cancel
+                {gt('રદ કરો', 'Cancel')}
               </button>
               <button
                 onClick={() => {
@@ -540,20 +648,20 @@ const ChallanDesigner: React.FC = () => {
                 <LayoutGrid className="w-6 h-6" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Challan Design Studio</h1>
-                <p className="text-xs text-gray-500">Configure how exported challans are laid out</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{gt('ચલણ ડિઝાઇન સ્ટુડિયો', 'Challan Design Studio')}</h1>
+                <p className="text-xs text-gray-500">{gt('એક્સપોર્ટ થયેલ ચલણ કેવું દેખાય તે ડિઝાઇન કરો', 'Configure how exported challans are laid out')}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {isDirty && (
                 <span className="px-2 py-1 text-[11px] font-bold rounded-md bg-amber-100 text-amber-700">
-                  Unsaved
+                  {gt('સાચવેલ નથી', 'Unsaved')}
                 </span>
               )}
               <button
                 onClick={undo}
                 disabled={!canUndo}
-                title="Undo (Ctrl+Z)"
+                title={gt('પાછળ જાઓ (Ctrl+Z)', 'Undo (Ctrl+Z)')}
                 className="p-2 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40"
               >
                 <Undo2 className="w-4 h-4" />
@@ -561,7 +669,7 @@ const ChallanDesigner: React.FC = () => {
               <button
                 onClick={redo}
                 disabled={!canRedo}
-                title="Redo (Ctrl+Y)"
+                title={gt('આગળ જાઓ (Ctrl+Y)', 'Redo (Ctrl+Y)')}
                 className="p-2 rounded-lg border border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-40"
               >
                 <Redo2 className="w-4 h-4" />
@@ -571,7 +679,7 @@ const ChallanDesigner: React.FC = () => {
                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border border-gray-300 bg-white hover:bg-gray-50"
               >
                 {mode === 'edit' ? <Eye className="w-4 h-4" /> : <Pencil className="w-4 h-4" />}
-                {mode === 'edit' ? 'Preview' : 'Edit'}
+                {mode === 'edit' ? gt('પ્રિવ્યૂ', 'Preview') : gt('એડિટ કરો', 'Edit')}
               </button>
               <button
                 onClick={handleSave}
@@ -579,7 +687,7 @@ const ChallanDesigner: React.FC = () => {
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? gt('સાચવી રહ્યું છે…', 'Saving…') : gt('સાચવો', 'Save')}
               </button>
             </div>
           </div>
@@ -590,13 +698,12 @@ const ChallanDesigner: React.FC = () => {
               {steps.map((s, i) => (
                 <span
                   key={s.label}
-                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full border ${
-                    s.done
+                  className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-full border ${s.done
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                       : i === currentStep
                         ? 'border-blue-400 bg-blue-50 text-blue-700'
                         : 'border-gray-200 bg-white text-gray-400'
-                  }`}
+                    }`}
                 >
                   {s.done && <Check className="w-3 h-3" />}
                   {s.label}
@@ -608,7 +715,7 @@ const ChallanDesigner: React.FC = () => {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              How it works
+              {gt('માર્ગદર્શિકા', 'How it works')}
               {helpOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
           </div>
@@ -617,7 +724,32 @@ const ChallanDesigner: React.FC = () => {
           {helpOpen && (
             <div className="bg-blue-50/60 border border-blue-200 rounded-xl p-4 mb-4">
               <ol className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-                {HELP_STEPS.map((h, i) => (
+                {[
+                  {
+                    title: gt('૧. બેકગ્રાઉન્ડ અપલોડ કરો', '1. Upload the background'),
+                    body: gt('કોરા ચલણ પેપરનો સીધો ફોટો અથવા સ્કેન અપલોડ કરો. બધી વસ્તુઓ આ ફોટો ઉપર દોરવામાં આવશે, જેથી તે તમારા ડિઝાઇનનું ટેમ્પલેટ બનશે.', 'Take a straight photo or scan of a BLANK challan paper and upload it. Everything you place is drawn on top of this image, so it becomes your design template.'),
+                  },
+                  {
+                    title: gt('૨. કિંમતવાળા ફીલ્ડ્સ ગોઠવો', '2. Place value fields'),
+                    body: gt('કોઈપણ ચિપ (ચલણ નંબર, તારીખ, ગ્રાહક નામ...) પર ક્લિક કરી કેનવાસ પર લાવો, પછી તેને કાગળ પર યોગ્ય જગ્યાએ ગોઠવો. નમૂનો ડેટા ચાલુ કરવાથી કિંમતો સાચી દેખાશે. ચોક્કસ ગોઠવણી માટે એરો કીનો ઉપયોગ કરો (મોટા ફેરફાર માટે Shift દબાવો).', 'Click a chip (Challan No., Date, Client Name…) to drop it on the canvas, then drag it over the matching blank space on the paper. Turn on "Show sample data" to see realistic values while placing. Arrow keys nudge the selected field precisely (hold Shift for bigger steps).'),
+                  },
+                  {
+                    title: gt('૩. આઈટમ લાઈનો સેટ કરો', '3. Set up item rows'),
+                    body: gt('વારંવાર આવતી આઈટમ ટેબલ માટે "આઈટમ લાઈનો" ચાલુ કરો. વાદળી કલરની રો ૧ ને ચલણની પહેલી લાઇન પર અને લીલા કલરની રો ૨ ને બીજી લાઇન પર ગોઠવો - તેમની વચ્ચેનું અંતર આપોઆપ સેટ થઈ જશે.', 'Enable "Item rows" for the repeating item table. Drag the blue Row 1 line onto the first row of the paper, then the green Row 2 line onto the second row — the gap between them sets the spacing for all rows.'),
+                  },
+                  {
+                    title: gt('૪. કોલમ ઉમેરો', '4. Add columns'),
+                    body: gt('કોષ્ટક માટે જરૂરી દરેક કૉલમ (નંગ, કુલ...) ઉમેરો. કેનવાસ પરની પીળી કલરની ઉભી લીટીઓને કાગળની કોલમ પર ગોઠવો. "પ્રી-પ્રિન્ટેડ" નો અર્થ એ છે કે આઈટમના નામ કાગળ પર પહેલેથી છાપેલા છે. "આઈટમ નામો પ્રિન્ટ કરો" કરવાથી કાગળ પર આઈટમના નામ પણ છપાશે.', 'Add a column for each value the table needs (Qty, Total…). Drag each amber vertical line over the matching printed column. "Pre-printed on paper" means item names are already printed (shuttering plates / jacks) — rows follow size order. "Print item names" makes the engine print the names too (cuplock / other) — add the Item / Size column.'),
+                  },
+                  {
+                    title: gt('૫. પેજ દીઠ લાઈનો', '5. Rows per page'),
+                    body: gt('કાગળ પર કેટલી લાઈનોની જગ્યા છે તે નક્કી કરો. જ્યારે વધારે વસ્તુઓ હોય ત્યારે નવું પેજ આપમેળે બની જશે. કુલ સરવાળા વાળા ખાનામાં "છેલ્લા પેજ પર" સેટ કરો જેથી તે એક જ વાર દેખાય.', 'Set how many rows the physical paper has. When a challan has more items than fit on one page, extra pages are generated automatically. Set the Grand Total field to "Print on: last page" so it only appears once.'),
+                  },
+                  {
+                    title: gt('૬. પ્રિવ્યૂ, સાચવો, ડિફોલ્ટ સેટ કરો', '6. Preview, save, set default'),
+                    body: gt('પ્રિવ્યૂ જોવાથી નમૂનાનું ચલણ કેવું બનશે તે દેખાશે. સાચવ્યા પછી "ડિફોલ્ટ" ટીક કરવાથી તે આઈટમ અને ચલણ પ્રકાર માટે ઓટોમેટિક સિલેક્ટ થઈ જશે.', 'Preview renders a sample challan, including page overflow. Save the design, then tick "Default" — challan exports for that item + challan type will use it automatically.'),
+                  },
+                ].map((h, i) => (
                   <li key={h.title} className="flex gap-2.5">
                     <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center mt-0.5">
                       {i + 1}
@@ -639,11 +771,10 @@ const ChallanDesigner: React.FC = () => {
               <div className="flex items-center gap-2 flex-wrap bg-white rounded-xl border border-gray-200 p-2">
                 <button
                   onClick={() => confirmIfDirty(startNewRaw)}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border ${
-                    !draft.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg border ${!draft.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                    }`}
                 >
-                  <Plus className="w-3.5 h-3.5" /> New
+                  <Plus className="w-3.5 h-3.5" /> {gt('નવું', 'New')}
                 </button>
                 {designs.map((d) => (
                   <button
@@ -652,11 +783,10 @@ const ChallanDesigner: React.FC = () => {
                       if (d.id === draft.id) return;
                       confirmIfDirty(() => loadDesignRaw(d));
                     }}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
-                      draft.id === d.id
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${draft.id === d.id
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
+                      }`}
                     title={`${d.category} · ${d.challan_type}`}
                   >
                     {d.name}
@@ -674,23 +804,23 @@ const ChallanDesigner: React.FC = () => {
                       checked={showSample}
                       onChange={(e) => setShowSample(e.target.checked)}
                     />
-                    Show sample data
+                    {gt('નમૂનાનો ડેટા બતાવો', 'Show sample data')}
                   </label>
                   <div className="flex items-center gap-3 flex-wrap text-[11px] text-gray-500">
                     {draft.config.band.enabled && (
                       <>
                         <span className="flex items-center gap-1">
-                          <span className="w-3 h-0.5 bg-blue-600 inline-block" /> Row 1 position
+                          <span className="w-3 h-0.5 bg-blue-600 inline-block" /> {gt('રો ૧ સ્થાન', 'Row 1 position')}
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="w-3 h-0.5 bg-green-600 inline-block" /> Row 2 = spacing
+                          <span className="w-3 h-0.5 bg-green-600 inline-block" /> {gt('રો ૨ = લાઇન અંતર', 'Row 2 = spacing')}
                         </span>
                         <span className="flex items-center gap-1">
-                          <span className="w-0.5 h-3 bg-amber-500 inline-block" /> Column position
+                          <span className="w-0.5 h-3 bg-amber-500 inline-block" /> {gt('કોલમ સ્થાન', 'Column position')}
                         </span>
                       </>
                     )}
-                    <span className="hidden sm:inline">Drag to move · Arrows nudge (Shift = big) · Del removes</span>
+                    <span className="hidden sm:inline">{gt('ખસેડવા માટે ખેંચો · એરો કી વડે ફેરફાર (Shift = વધુ) · Del થી રદ', 'Drag to move · Arrows nudge (Shift = big) · Del removes')}</span>
                   </div>
                 </div>
               )}
@@ -702,10 +832,10 @@ const ChallanDesigner: React.FC = () => {
                 {!draft.background_url && mode === 'edit' ? (
                   <label className="w-full aspect-[1/1.414] max-w-md flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 text-gray-500">
                     <ImageIcon className="w-10 h-10" />
-                    <span className="text-sm font-semibold">Upload background design (PNG/JPG)</span>
-                    <span className="text-xs">A straight photo or scan of your blank challan paper</span>
+                    <span className="text-sm font-semibold">{gt('બેકગ્રાઉન્ડ ડિઝાઇન અપલોડ કરો (PNG/JPG)', 'Upload background design (PNG/JPG)')}</span>
+                    <span className="text-xs">{gt('તમારા કોરા ચલણ પેપરનો સીધો ફોટો અથવા સ્કેન', 'A straight photo or scan of your blank challan paper')}</span>
                     <span className="text-[11px] text-blue-600 font-semibold">
-                      Step 1 of 4 — fields are placed on top of this image
+                      {gt('પગલું ૧ માંથી ૪ — ફીલ્ડ્સ આ ફોટોની ઉપર મુકવામાં આવશે', 'Step 1 of 4 — fields are placed on top of this image')}
                     </span>
                     <input
                       type="file"
@@ -740,7 +870,7 @@ const ChallanDesigner: React.FC = () => {
                           ‹
                         </button>
                         <span className="font-semibold text-gray-600">
-                          Page {safePreviewPage + 1} / {previewPages.length}
+                          {gt(`પેજ ${safePreviewPage + 1} / ${previewPages.length}`, `Page ${safePreviewPage + 1} / ${previewPages.length}`)}
                         </span>
                         <button
                           onClick={() => setPreviewPage((p) => Math.min(previewPages.length - 1, p + 1))}
@@ -752,7 +882,7 @@ const ChallanDesigner: React.FC = () => {
                       </div>
                     )}
                     <p className="text-center text-[11px] text-gray-400">
-                      Preview uses sample data — extra rows are added to demonstrate page overflow.
+                      {gt('પ્રિવ્યૂ નમૂનાના ડેટાનો ઉપયોગ કરે છે — ઓવરફ્લો જોવા માટે વધારાની આઈટમ ઉમેરેલી છે.', 'Preview uses sample data — extra rows are added to demonstrate page overflow.')}
                     </p>
                     {previewPages[safePreviewPage] && (
                       <DesignStage
@@ -772,16 +902,16 @@ const ChallanDesigner: React.FC = () => {
             <div className="space-y-4">
               {/* Design meta */}
               <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
-                <h3 className="font-bold text-gray-900 text-sm">Design</h3>
+                <h3 className="font-bold text-gray-900 text-sm">{gt('ડિઝાઇન વિગત', 'Design')}</h3>
                 <input
                   value={draft.name}
                   onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-                  placeholder="Design name"
+                  placeholder={gt('ડિઝાઇનનું નામ', 'Design name')}
                   className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-xs font-semibold text-gray-600">
-                    Item type
+                    {gt('આઈટમનો પ્રકાર', 'Item type')}
                     <select
                       value={draft.category}
                       onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value as ItemCategory }))}
@@ -789,13 +919,16 @@ const ChallanDesigner: React.FC = () => {
                     >
                       {CATEGORY_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>
-                          {o.label}
+                          {o.value === 'shuttering' ? gt('શટરિંગ પ્લેટ્સ', o.label)
+                            : o.value === 'jack' ? gt('લોખંડના જેક', o.label)
+                              : o.value === 'cuplock' ? gt('કપલોક', o.label)
+                                : gt('અન્ય', o.label)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label className="text-xs font-semibold text-gray-600">
-                    Challan type
+                    {gt('ચલણનો પ્રકાર', 'Challan type')}
                     <select
                       value={draft.challan_type}
                       onChange={(e) => setDraft((d) => ({ ...d, challan_type: e.target.value as DesignChallanType }))}
@@ -803,7 +936,9 @@ const ChallanDesigner: React.FC = () => {
                     >
                       {CHALLAN_TYPE_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>
-                          {o.label}
+                          {o.value === 'both' ? gt('બંને (ઉધાર + જમા)', o.label)
+                            : o.value === 'udhar' ? gt('ઉધાર', o.label)
+                              : gt('જમા', o.label)}
                         </option>
                       ))}
                     </select>
@@ -815,15 +950,33 @@ const ChallanDesigner: React.FC = () => {
                     checked={draft.is_default}
                     onChange={(e) => setDraft((d) => ({ ...d, is_default: e.target.checked }))}
                   />
-                  Default for this item + challan type
+                  {gt('આ આઈટમ અને ચલણ પ્રકાર માટે ડિફોલ્ટ સેટ કરો', 'Default for this item + challan type')}
                 </label>
                 <p className="text-[11px] text-gray-500">
-                  Challan exports automatically pick the default design matching the challan's item and type.
+                  {gt('નિકાસ કરતી વખતે આ આઈટમ અને ચલણના પ્રકાર માટે આ ડિઝાઇન આપોઆપ વપરાશે.', "Challan exports automatically pick the default design matching the challan's item and type.")}
                 </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyLayout}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {gt('લેઆઉટ કોપી કરો', 'Copy Layout')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePasteLayout}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  >
+                    <Clipboard className="w-3.5 h-3.5" />
+                    {gt('લેઆઉટ પેસ્ટ કરો', 'Paste Layout')}
+                  </button>
+                </div>
                 <div className="flex items-center gap-2 pt-1">
                   <label className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50">
                     <Upload className="w-3.5 h-3.5" />
-                    {uploading ? 'Uploading…' : draft.background_url ? 'Replace background' : 'Upload background'}
+                    {uploading ? gt('અપલોડ થઈ રહ્યું છે…', 'Uploading…') : draft.background_url ? gt('બેકગ્રાઉન્ડ બદલો', 'Replace background') : gt('બેકગ્રાઉન્ડ અપલોડ કરો', 'Upload background')}
                     <input
                       type="file"
                       accept="image/*"
@@ -834,7 +987,7 @@ const ChallanDesigner: React.FC = () => {
                   <button
                     onClick={handleDelete}
                     className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
-                    title="Delete design"
+                    title={gt('ડિઝાઇન ડીલીટ કરો', 'Delete design')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -843,9 +996,9 @@ const ChallanDesigner: React.FC = () => {
 
               {/* Field palette */}
               <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-                <h3 className="font-bold text-gray-900 text-sm">Add value fields</h3>
+                <h3 className="font-bold text-gray-900 text-sm">{gt('માહિતીવાળા ખાના (ફીલ્ડ્સ) ઉમેરો', 'Add value fields')}</h3>
                 <p className="text-[11px] text-gray-500">
-                  Click to drop on the canvas, then drag into place over the paper.
+                  {gt('કેનવાસ પર લાવવા માટે ક્લિક કરો, પછી તેને કાગળ પર યોગ્ય જગ્યાએ ખેંચી લો.', 'Click to drop on the canvas, then drag into place over the paper.')}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {FIELD_KEYS.map((k) => (
@@ -864,7 +1017,7 @@ const ChallanDesigner: React.FC = () => {
               {draft.config.fields.length > 0 && (
                 <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
                   <h3 className="font-bold text-gray-900 text-sm">
-                    Placed fields ({draft.config.fields.length})
+                    {gt(`ગોઠવેલા ખાના (${draft.config.fields.length})`, `Placed fields (${draft.config.fields.length})`)}
                   </h3>
                   <div className="space-y-1">
                     {draft.config.fields.map((f) => {
@@ -873,11 +1026,10 @@ const ChallanDesigner: React.FC = () => {
                         <div
                           key={f.id}
                           onClick={() => setSelection({ type: 'field', id: f.id })}
-                          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs ${
-                            isSel
+                          className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs ${isSel
                               ? 'border-blue-400 bg-blue-50 text-blue-800'
                               : 'border-gray-100 text-gray-700 hover:bg-gray-50'
-                          }`}
+                            }`}
                         >
                           <span className="font-semibold truncate">
                             {f.key === 'literal' ? `"${f.staticText || 'Text'}"` : fieldKeyLabel(f.key)}
@@ -885,7 +1037,7 @@ const ChallanDesigner: React.FC = () => {
                           <span className="flex items-center gap-1.5 flex-shrink-0">
                             {f.printOn !== 'every' && (
                               <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-gray-100 text-gray-500">
-                                {f.printOn === 'first' ? 'first page' : 'last page'}
+                                {f.printOn === 'first' ? gt('પ્રથમ પેજ', 'first page') : gt('છેલ્લું પેજ', 'last page')}
                               </span>
                             )}
                             <button
@@ -894,7 +1046,7 @@ const ChallanDesigner: React.FC = () => {
                                 deleteField(f.id);
                               }}
                               className="text-gray-400 hover:text-red-600"
-                              title="Remove field"
+                              title={gt('ખાનું કાઢી નાખો', 'Remove field')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -919,7 +1071,7 @@ const ChallanDesigner: React.FC = () => {
                     <input
                       value={selectedField.staticText || ''}
                       onChange={(e) => updateField(selectedField.id, { staticText: e.target.value })}
-                      placeholder="Static text"
+                      placeholder={gt('લખાણ', 'Static text')}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
                     />
                   )}
@@ -929,7 +1081,7 @@ const ChallanDesigner: React.FC = () => {
                     onChange={(p) => updateFieldStyle(selectedField.id, p)}
                   />
                   <label className="block text-xs font-semibold text-gray-600">
-                    Box width (0 = auto): {Math.round(selectedField.w * 100)}%
+                    {gt(`ખાનાની પહોળાઈ (0 = ઓટો): ${Math.round(selectedField.w * 100)}%`, `Box width (0 = auto): ${Math.round(selectedField.w * 100)}%`)}
                     <input
                       type="range"
                       min={0}
@@ -940,19 +1092,19 @@ const ChallanDesigner: React.FC = () => {
                     />
                   </label>
                   <label className="block text-xs font-semibold text-gray-600">
-                    Print on
+                    {gt('ક્યારે પ્રિન્ટ કરવું', 'Print on')}
                     <select
                       value={selectedField.printOn}
                       onChange={(e) => updateField(selectedField.id, { printOn: e.target.value as PrintOn })}
                       className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
                     >
-                      <option value="every">Every page</option>
-                      <option value="first">First page only</option>
-                      <option value="last">Last page only</option>
+                      <option value="every">{gt('દરેક પેજ પર', 'Every page')}</option>
+                      <option value="first">{gt('માત્ર પહેલા પેજ પર', 'First page only')}</option>
+                      <option value="last">{gt('માત્ર છેલ્લા પેજ પર', 'Last page only')}</option>
                     </select>
                   </label>
                   <p className="text-[11px] text-gray-500">
-                    Controls which pages show this field when items overflow to extra pages.
+                    {gt('વધારે આઈટમ હોય ત્યારે કયા પેજ પર આ ફિલ્ડ છાપવું તેનું નિયંત્રણ કરે છે.', 'Controls which pages show this field when items overflow to extra pages.')}
                   </p>
                 </section>
               )}
@@ -960,7 +1112,7 @@ const ChallanDesigner: React.FC = () => {
               {/* Row band */}
               <section className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
                 <label className="flex items-center justify-between cursor-pointer">
-                  <span className="font-bold text-gray-900 text-sm">Item rows (repeater)</span>
+                  <span className="font-bold text-gray-900 text-sm">{gt('આઈટમ લાઈનો (રીપીટર)', 'Item rows (repeater)')}</span>
                   <input
                     type="checkbox"
                     checked={draft.config.band.enabled}
@@ -969,7 +1121,7 @@ const ChallanDesigner: React.FC = () => {
                 </label>
                 {!draft.config.band.enabled && (
                   <p className="text-[11px] text-gray-500">
-                    Enable to print the repeating item table (quantities, totals) on the challan.
+                    {gt('ચલણ પર આઈટમનું વિગતવાર લિસ્ટ (નંગ, કુલ) પ્રિન્ટ કરવા માટે ચાલુ કરો.', 'Enable to print the repeating item table (quantities, totals) on the challan.')}
                   </p>
                 )}
 
@@ -977,18 +1129,18 @@ const ChallanDesigner: React.FC = () => {
                   <>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="text-xs font-semibold text-gray-600">
-                        Row labels
+                        {gt('રો લેબલ પદ્ધતિ', 'Row labels')}
                         <select
                           value={draft.config.band.labels}
                           onChange={(e) => patchBand({ labels: e.target.value as RowBand['labels'] })}
                           className="mt-1 w-full px-2 py-2 text-sm border border-gray-300 rounded-lg"
                         >
-                          <option value="preprinted">Pre-printed on paper</option>
-                          <option value="dynamic">Print item names</option>
+                          <option value="preprinted">{gt('કાગળ પર પહેલેથી છાપેલ છે', 'Pre-printed on paper')}</option>
+                          <option value="dynamic">{gt('આઈટમ નામો પ્રિન્ટ કરો', 'Print item names')}</option>
                         </select>
                       </label>
                       <label className="text-xs font-semibold text-gray-600">
-                        Rows / page
+                        {gt('પેજ દીઠ લાઈનો', 'Rows / page')}
                         <input
                           type="number"
                           min={1}
@@ -998,7 +1150,7 @@ const ChallanDesigner: React.FC = () => {
                         />
                       </label>
                       <label className="text-xs font-semibold text-gray-600">
-                        Row spacing (% of page height)
+                        {gt('લાઇનો વચ્ચેનું અંતર (પેજની ઉંચાઈના %)', 'Row spacing (% of page height)')}
                         <input
                           type="number"
                           min={0.5}
@@ -1014,7 +1166,7 @@ const ChallanDesigner: React.FC = () => {
                         />
                       </label>
                       <label className="text-xs font-semibold text-gray-600">
-                        First row position (% from top)
+                        {gt('પહેલી લાઇનનું સ્થાન (ઉપરથી %)', 'First row position (% from top)')}
                         <input
                           type="number"
                           min={0}
@@ -1032,18 +1184,16 @@ const ChallanDesigner: React.FC = () => {
                     </div>
                     <p className="text-[11px] text-gray-500 leading-relaxed">
                       {draft.config.band.labels === 'preprinted'
-                        ? 'Item names are already printed on the paper (e.g. plate sizes). Rows follow the size order — only numbers are printed.'
-                        : 'The engine prints item names too — add the "Item / Size" column below and give it enough width.'}
+                        ? gt('આઈટમના નામ કાગળ પર પહેલેથી છાપેલા છે (દા.ત. પતરાની સાઈઝ). લાઈનો સાઈઝ ક્રમ પ્રમાણે ગોઠવાશે - ફક્ત નંબરો જ છાપવામાં આવશે.', 'Item names are already printed on the paper (e.g. plate sizes). Rows follow the size order — only numbers are printed.')
+                        : gt('એન્જિન આઈટમના નામો પણ છાપશે - નીચે "આઈટમ / સાઈઝ" ની કોલમ ઉમેરો અને તેને પૂરતી પહોળાઈ આપો.', 'The engine prints item names too — add the "Item / Size" column below and give it enough width.')}
                     </p>
                     <p className="text-[11px] text-gray-500 leading-relaxed">
-                      Drag the <span className="text-blue-600 font-semibold">blue (Row 1)</span> and{' '}
-                      <span className="text-green-600 font-semibold">green (Row 2)</span> guides on the canvas — or type
-                      exact values above.
+                      {gt('કેનવાસ પર વાદળી (રો ૧) અને લીલા (રો ૨) ગાઈડને ખેંચો - અથવા ઉપર બરાબર કિંમતો લખો.', 'Drag the blue (Row 1) and green (Row 2) guides on the canvas — or type exact values above.')}
                     </p>
 
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-600">Add columns</span>
+                        <span className="text-xs font-semibold text-gray-600">{gt('કોલમ ઉમેરો', 'Add columns')}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {BAND_COLUMN_FIELDS.filter(
@@ -1064,7 +1214,7 @@ const ChallanDesigner: React.FC = () => {
                     {draft.config.band.columns.length > 0 && (
                       <div className="space-y-1">
                         <span className="text-xs font-semibold text-gray-600">
-                          Columns ({draft.config.band.columns.length})
+                          {gt(`કોલમ (${draft.config.band.columns.length})`, `Columns (${draft.config.band.columns.length})`)}
                         </span>
                         {draft.config.band.columns.map((col) => {
                           const isSel = selection?.type === 'column' && selection.id === col.id;
@@ -1072,11 +1222,10 @@ const ChallanDesigner: React.FC = () => {
                             <div
                               key={col.id}
                               onClick={() => setSelection({ type: 'column', id: col.id })}
-                              className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs ${
-                                isSel
+                              className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs ${isSel
                                   ? 'border-amber-400 bg-amber-50 text-amber-800'
                                   : 'border-gray-100 text-gray-700 hover:bg-gray-50'
-                              }`}
+                                }`}
                             >
                               <span className="font-semibold">{bandFieldLabel(col.field)}</span>
                               <button
@@ -1085,7 +1234,7 @@ const ChallanDesigner: React.FC = () => {
                                   deleteColumn(col.id);
                                 }}
                                 className="text-gray-400 hover:text-red-600"
-                                title="Remove column"
+                                title={gt('કોલમ કાઢી નાખો', 'Remove column')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1098,7 +1247,7 @@ const ChallanDesigner: React.FC = () => {
                     {selectedColumn && (
                       <div className="border border-amber-200 rounded-lg p-3 space-y-3 bg-amber-50/40">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-amber-700 text-sm">{bandFieldLabel(selectedColumn.field)} column</span>
+                          <span className="font-bold text-amber-700 text-sm">{gt(`${bandFieldLabel(selectedColumn.field)} કોલમ`, `${bandFieldLabel(selectedColumn.field)} column`)}</span>
                           <button
                             onClick={() => deleteColumn(selectedColumn.id)}
                             className="text-red-500 hover:text-red-700"
@@ -1107,10 +1256,10 @@ const ChallanDesigner: React.FC = () => {
                           </button>
                         </div>
                         <p className="text-[11px] text-gray-500">
-                          Drag the amber line on the canvas (or use ←/→ keys) to set the column's horizontal position.
+                          {gt('કોલમની આડી સ્થિતિ નક્કી કરવા માટે કેનવાસ પરની પીળી લાઇન ખેંચો (અથવા ←/→ કી વાપરો).', "Drag the amber line on the canvas (or use ←/→ keys) to set the column's horizontal position.")}
                         </p>
                         <label className="block text-xs font-semibold text-gray-600">
-                          Column width: {Math.round(selectedColumn.w * 100)}%
+                          {gt(`કોલમની પહોળાઈ: ${Math.round(selectedColumn.w * 100)}%`, `Column width: ${Math.round(selectedColumn.w * 100)}%`)}
                           <input
                             type="range"
                             min={2}
@@ -1143,66 +1292,69 @@ const TextStyleControls: React.FC<{
   style: TextStyle;
   naturalHeight?: number;
   onChange: (patch: Partial<TextStyle>) => void;
-}> = ({ style, naturalHeight, onChange }) => (
-  <div className="space-y-2">
-    <label className="block text-xs font-semibold text-gray-600">
-      Font size:{' '}
-      {naturalHeight ? `≈ ${Math.round(style.fontSize * naturalHeight)}px on template` : Math.round(style.fontSize * 1000)}
-      <input
-        type="range"
-        min={6}
-        max={70}
-        value={Math.round(style.fontSize * 1000)}
-        onChange={(e) => onChange({ fontSize: Number(e.target.value) / 1000 })}
-        className="w-full accent-blue-600"
-      />
-    </label>
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => onChange({ bold: !style.bold })}
-        title="Bold"
-        className={`p-1.5 rounded border ${
-          style.bold ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700'
-        }`}
-      >
-        <Bold className="w-3.5 h-3.5" />
-      </button>
-      <button
-        onClick={() => onChange({ italic: !style.italic })}
-        title="Italic"
-        className={`p-1.5 rounded border ${
-          style.italic ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700'
-        }`}
-      >
-        <Italic className="w-3.5 h-3.5" />
-      </button>
-      <div className="flex rounded border border-gray-300 overflow-hidden">
-        {(
-          [
-            { value: 'left', title: 'Align left', Icon: AlignLeft },
-            { value: 'center', title: 'Align center', Icon: AlignCenter },
-            { value: 'right', title: 'Align right', Icon: AlignRight },
-          ] as const
-        ).map(({ value, title, Icon }) => (
-          <button
-            key={value}
-            onClick={() => onChange({ align: value })}
-            title={title}
-            className={`p-1.5 ${style.align === value ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
-          >
-            <Icon className="w-3.5 h-3.5" />
-          </button>
-        ))}
+}> = ({ style, naturalHeight, onChange }) => {
+  const { language } = useLanguage();
+  const gt = (gu: string, en: string) => language === 'gu' ? gu : en;
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-semibold text-gray-600">
+        {gt('ફોન્ટ સાઈઝ', 'Font size')}:{' '}
+        {naturalHeight ? `≈ ${Math.round(style.fontSize * naturalHeight)}px ${gt('ટેમ્પલેટ પર', 'on template')}` : Math.round(style.fontSize * 1000)}
+        <input
+          type="range"
+          min={6}
+          max={70}
+          value={Math.round(style.fontSize * 1000)}
+          onChange={(e) => onChange({ fontSize: Number(e.target.value) / 1000 })}
+          className="w-full accent-blue-600"
+        />
+      </label>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onChange({ bold: !style.bold })}
+          title={gt('બોલ્ડ', 'Bold')}
+          className={`p-1.5 rounded border ${style.bold ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700'
+            }`}
+        >
+          <Bold className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => onChange({ italic: !style.italic })}
+          title={gt('ઇટાલિક', 'Italic')}
+          className={`p-1.5 rounded border ${style.italic ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700'
+            }`}
+        >
+          <Italic className="w-3.5 h-3.5" />
+        </button>
+        <div className="flex rounded border border-gray-300 overflow-hidden">
+          {(
+            [
+              { value: 'left', title: gt('ડાબી બાજુ', 'Align left'), Icon: AlignLeft },
+              { value: 'center', title: gt('વચ્ચે', 'Align center'), Icon: AlignCenter },
+              { value: 'right', title: gt('જમણી બાજુ', 'Align right'), Icon: AlignRight },
+            ] as const
+          ).map(({ value, title, Icon }) => (
+            <button
+              key={value}
+              onClick={() => onChange({ align: value })}
+              title={title}
+              className={`p-1.5 ${style.align === value ? 'bg-blue-600 text-white' : 'text-gray-600'}`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
+        <input
+          type="color"
+          value={style.fill}
+          onChange={(e) => onChange({ fill: e.target.value })}
+          className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+          title={gt('લખાણનો રંગ', 'Text color')}
+        />
       </div>
-      <input
-        type="color"
-        value={style.fill}
-        onChange={(e) => onChange({ fill: e.target.value })}
-        className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
-        title="Text color"
-      />
     </div>
-  </div>
-);
+  );
+};
 
 export default ChallanDesigner;

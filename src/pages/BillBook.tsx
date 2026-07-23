@@ -322,6 +322,67 @@ export default function BillBook() {
     }
   };
 
+  const downloadBakiPaymentList = () => {
+    try {
+      const bakiBills = bills.filter((b) => (b.due_payment || 0) > 0);
+      if (bakiBills.length === 0) {
+        toast.error(localStorage.getItem('language') === 'gu' ? 'કોઈ બાકી ચૂકવણી મળેલ નથી' : 'No pending payments found');
+        return;
+      }
+
+      // Build CSV
+      const isGu = localStorage.getItem('language') === 'gu';
+      const headers = isGu
+        ? 'ગ્રાહક આઈડી,ગ્રાહક નામ,બિલ નંબર,બિલ તારીખ,પ્રારંભિક તારીખ,અંતિમ તારીખ,કુલ રકમ,ચૂકવેલ રકમ,બાકી રકમ,મોબાઈલ,સાઈટ'
+        : 'Client ID,Client Name,Bill Number,Bill Date,From Date,To Date,Total Amount,Paid Amount,Due Amount,Phone,Site';
+
+      const rows = bakiBills.map((b) => {
+        const clientId = b.client?.client_nic_name || '';
+        const clientName = b.client?.client_name || '';
+        const billNum = b.bill_number || '';
+        const billDate = b.billdate || b.billing_date || b.bill_date || b.created_at || '';
+        const formattedBillDate = billDate ? new Date(billDate).toLocaleDateString('en-GB') : '';
+        const fromDate = b.from_date ? new Date(b.from_date).toLocaleDateString('en-GB') : '';
+        const toDate = b.to_date ? new Date(b.to_date).toLocaleDateString('en-GB') : '';
+        const total = b.grand_total || b.total_amount || 0;
+        const paid = b.total_payment || 0;
+        const due = b.due_payment || 0;
+        const phone = b.client?.primary_phone_number || '';
+        const site = b.client?.site || '';
+
+        // Escape comma
+        const escapeCSV = (str: string) => `"${String(str).replace(/"/g, '""')}"`;
+
+        return [
+          escapeCSV(clientId),
+          escapeCSV(clientName),
+          escapeCSV(billNum),
+          escapeCSV(formattedBillDate),
+          escapeCSV(fromDate),
+          escapeCSV(toDate),
+          total,
+          paid,
+          due,
+          escapeCSV(phone),
+          escapeCSV(site),
+        ].join(',');
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', isGu ? 'બાકી_પેમેન્ટ_લિસ્ટ.csv' : 'pending_payments_list.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(isGu ? 'બાકી પેમેન્ટ લિસ્ટ ડાઉનલોડ થઈ ગયું!' : 'Pending payments list downloaded!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to export CSV');
+    }
+  };
+
   const handleViewBill = async (bill: BillRecord) => {
     const details = await fetchBillDetails(bill);
     if (details) {
@@ -502,6 +563,14 @@ Khata Kendra`;
 
             <div className="flex items-center gap-3">
               <button
+                onClick={downloadBakiPaymentList}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                {localStorage.getItem('language') === 'gu' ? 'બાકી લિસ્ટ' : 'Pending List'}
+              </button>
+
+              <button
                 onClick={() => navigate('/payments')}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
               >
@@ -565,6 +634,18 @@ Khata Kendra`;
                 </div>
               )}
             </div>
+
+            {/* Download Baki List Button */}
+            <button
+              onClick={downloadBakiPaymentList}
+              className="flex items-center justify-center px-4 py-2.5 bg-emerald-600 text-white rounded-xl shadow-sm hover:bg-emerald-700 transition-colors gap-2"
+              title={localStorage.getItem('language') === 'gu' ? 'બાકી પેમેન્ટ લિસ્ટ ડાઉનલોડ કરો' : 'Download Pending Payments'}
+            >
+              <Download className="w-5 h-5" />
+              <span className="text-sm font-semibold hidden md:inline">
+                {localStorage.getItem('language') === 'gu' ? 'બાકી લિસ્ટ' : 'Pending List'}
+              </span>
+            </button>
           </div>
 
           {/* Results Count */}

@@ -106,6 +106,8 @@ export interface ChallanRenderInput {
   site: string;
   phone: string;
   driverName?: string;
+  driverPhone?: string;
+  vehicleNumber?: string;
   mainNote?: string;
   rows: ChallanRow[];
   grandTotal: number;
