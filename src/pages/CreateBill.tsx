@@ -613,6 +613,7 @@ export default function CreateBill() {
           total_rent_amount: fullSummary.totalRent,
           total_extra_cost: fullSummary.totalExtraCosts,
           total_discount: fullSummary.discounts,
+          grand_total: fullSummary.grandTotal,
           total_payment: fullSummary.totalPaid,
           due_payment: Math.round(fullSummary.duePayment),
         };
@@ -682,6 +683,7 @@ export default function CreateBill() {
           total_rent_amount: fullSummary.totalRent,
           total_extra_cost: fullSummary.totalExtraCosts,
           total_discount: fullSummary.discounts,
+          grand_total: fullSummary.grandTotal,
           total_payment: fullSummary.totalPaid,
           due_payment: Math.round(fullSummary.duePayment),
         };
